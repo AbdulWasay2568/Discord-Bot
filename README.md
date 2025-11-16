@@ -268,9 +268,7 @@ DATABASE_URL=mysql+pymysql://user:password@localhost:3306/discord_bot
 ⚠️ **Important:** This bot stores all messages and attachments in a local database.
 
 - Messages are stored indefinitely until manually deleted
-- Attachment URLs are Discord CDN links (may expire)
 - Only admins should run `!backup all` command
-- Users can backup and delete their own data
 
 ---
 
