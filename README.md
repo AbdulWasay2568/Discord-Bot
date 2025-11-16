@@ -32,102 +32,6 @@ A Discord bot that combines AI-powered chat with comprehensive message backup an
 
 ---
 
-### Backup Commands (Admin Only)
-
-Only server administrators may run backup-related commands. Available commands:
-
-- `!backup all`
-   - Export all messages from the server into a TXT file.
-   - Example: `!backup all`
-
-- `!backup @user1 @user2 ...`
-   - Export messages for the specified Discord user mentions. You must supply mentions.
-   - Example: `!backup @Alice @Bob`
-
-- `!backup_stats`
-   - Show server-level message/attachment statistics.
-   - Example: `!backup_stats`
-
-- `!backup_stats @user`
-   - Show message/attachment statistics for a specific user.
-   - Example: `!backup_stats @Alice`
-
-Notes:
-- Backups include bot replies if the bot has saved those messages to the database (the bot now saves its own messages).
-- The bot will send the generated TXT file as a Discord attachment; download it from Discord to keep a local copy.
-
----
-
-#### `!backup @user1 @user2 @user3`
-Export messages from multiple specific users.
-
-**Example:**
-```
-!backup @Alice @Bob @Charlie
-```
-
-**Output:** Creates `backup_multiple_YYYYMMDD_HHMMSS.txt`
-
----
-
-#### `!backup all`
-Export all messages from the entire server (admin only).
-
-**Requirements:** You must have administrator permissions
-
-**Example:**
-```
-!backup all
-```
-
-**Output:** Creates `backup_multiple_YYYYMMDD_HHMMSS.txt` with all server messages
-
----
-
-#### `!backup compact`
-Export your messages in compact format (minimal metadata).
-
-**Example:**
-```
-!backup compact
-```
-
----
-
-#### `!backup @user1 @user2 compact`
-Export specific users' messages in compact format.
-
-**Example:**
-```
-!backup @Alice @Bob compact
-```
-
----
-
-#### `!backup_stats` (or `!bak_stats`)
-View your message statistics.
-
-**Example:**
-```
-!backup_stats
-```
-
-**Shows:**
-- Total messages (all servers)
-- Messages in current server
-- Total attachments uploaded
-
----
-
-#### `!backup_stats @user`
-View a specific user's statistics.
-
-**Example:**
-```
-!backup_stats @Alice
-```
-
----
 
 ## How to Download Backup TXT Files
 
@@ -168,6 +72,54 @@ If you're hosting the bot on a server, you can access backups via:
 
 ---
 
+## Permissions Required
+
+### Bot Discord Permissions
+- Read Messages/View Channels
+- Send Messages
+- Read Message History
+- Manage Messages
+- Add Reactions
+- Read Reactions
+- Attach Files
+
+### Command Permissions
+- `!ask`, `!askfile` - All users
+- `!backup`, `!backup_stats` - Administrators only
+- `!backup all` - Administrators only
+
+---
+
+### Backup Commands (Admin Only)
+
+Only server administrators may run backup-related commands. Available commands:
+
+- `!backup all`
+   - Export all messages from the server into a TXT file.
+   - Example: `!backup all`
+
+- `!backup @user1 @user2 ...`
+   - Export messages for the specified Discord user mentions. You must supply mentions.
+   - Example: `!backup @Alice @Bob`
+
+- `!backup_stats`
+   - Show server-level message/attachment statistics.
+   - Example: `!backup_stats`
+   **Shows:**
+   - Total messages (all servers)
+   - Messages in current server
+   - Total attachments uploaded
+
+- `!backup_stats @user`
+   - Show message/attachment statistics for a specific user.
+   - Example: `!backup_stats @Alice`
+
+Notes:
+- Backups include bot replies if the bot has saved those messages to the database (the bot now saves its own messages).
+- The bot will send the generated TXT file as a Discord attachment; download it from Discord to keep a local copy.
+
+---
+
 ## Backup File Format
 
 ### Detailed Format (Default)
@@ -204,18 +156,6 @@ Total Messages: 127
 Export Date: 2025-11-15 14:30:45
 ================================================================================
 ```
-
-### Compact Format
-```
-[2025-11-15 10:30:22] alice:
-Hi everyone, how's it going?
-
-[2025-11-15 11:15:45] bob:
-All good here!
-```
-
----
-
 ## File Naming Convention
 
 - **Single user:** `backup_username_YYYYMMDD_HHMMSS.txt`
@@ -320,24 +260,6 @@ DATABASE_URL=postgresql://user:password@localhost:5432/discord_bot
 ```env
 DATABASE_URL=mysql+pymysql://user:password@localhost:3306/discord_bot
 ```
-
----
-
-## Permissions Required
-
-### Bot Discord Permissions
-- Read Messages/View Channels
-- Send Messages
-- Read Message History
-- Manage Messages
-- Add Reactions
-- Read Reactions
-- Attach Files
-
-### Command Permissions
-- `!ask`, `!askfile` - All users
-- `!backup`, `!backup_stats` - Administrators only
-- `!backup all` - Administrators only
 
 ---
 

@@ -5,6 +5,7 @@ from sqlalchemy.orm import sessionmaker, Session
 import os
 from dotenv import load_dotenv
 
+# Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from models.base import Base
@@ -24,6 +25,7 @@ def create_db():
     """Create all tables"""
     Base.metadata.create_all(bind=engine)
 
+# ==================== USER OPERATIONS ====================
 def get_or_create_user(db: Session, discord_id: str, username: str, is_bot: bool = False, avatar_url: str = None, discriminator: str = None) -> User:
     """Get existing user or create new one"""
     user = db.query(User).filter(User.discord_id == discord_id).first()
@@ -40,6 +42,7 @@ def get_or_create_user(db: Session, discord_id: str, username: str, is_bot: bool
         db.refresh(user)
     return user
 
+# ==================== MESSAGE OPERATIONS ====================
 def save_message(db: Session, discord_message_id: int, user_id: int, channel_id: int, guild_id: int, 
                 content: str = None, is_bot_message: bool = False) -> Message:
     """Save a message to database"""
@@ -68,7 +71,7 @@ def get_channel_messages(db: Session, channel_id: int, limit: int = 100) -> list
     """Get all messages from a specific channel"""
     return db.query(Message).filter(Message.channel_id == channel_id).order_by(Message.created_at.desc()).limit(limit).all()
 
-
+# ==================== ATTACHMENT OPERATIONS ====================
 def save_attachment(db: Session, discord_attachment_id: int, message_id: int, filename: str, 
                    url: str, content_type: str = None, size: int = None, local_path: str = None, 
                    is_downloaded: bool = False) -> Attachment:
@@ -96,7 +99,7 @@ def get_message_attachments(db: Session, message_id: int) -> list:
     """Get all attachments for a message"""
     return db.query(Attachment).filter(Attachment.message_id == message_id).all()
 
-
+# ==================== REACTION OPERATIONS ====================
 def save_reaction(db: Session, message_id: int, user_id: int, emoji: str) -> Reaction:
     """Save a reaction to database (handles duplicates gracefully)"""
     existing = db.query(Reaction).filter(
@@ -136,7 +139,7 @@ def remove_reaction(db: Session, message_id: int, user_id: int, emoji: str) -> b
         return True
     return False
 
-
+# ==================== GUILD/CHANNEL OPERATIONS ====================
 def get_guild_messages(db: Session, guild_id: int, limit: int = 500) -> list:
     """Get all messages from a specific guild"""
     return db.query(Message).filter(Message.guild_id == guild_id).order_by(Message.created_at.desc()).limit(limit).all()

@@ -83,6 +83,7 @@ def generate_txt_backup(target_users, db, ctx, compact=False):
                     Message.channel_id.in_(channel_ids)
                 ).order_by(Message.created_at).all()
 
+                # Merge and sort by timestamp so bot replies appear in context
                 merged_messages.extend(bot_messages)
                 merged_messages.sort(key=lambda m: m.created_at)
 
@@ -130,7 +131,9 @@ async def backup(ctx, *args):
 
         target_users = []
 
+        # If 'all' specified
         if len(args) == 1 and args[0].lower() == "all":
+            # Get all unique users from database in this guild
             db_messages = db.query(Message).filter(Message.guild_id == ctx.guild.id).all()
             seen_user_ids = set(msg.user_id for msg in db_messages)
 
@@ -146,6 +149,7 @@ async def backup(ctx, *args):
                     pass
 
         else:
+            # Parse mentions only (admin must provide mentions)
             mentions = []
             for arg in args:
                 if arg.startswith('<@') and arg.endswith('>'):
@@ -166,17 +170,21 @@ async def backup(ctx, *args):
             await ctx.reply("⚠️ No valid users found to backup.")
             return
 
+        # Generate backup content
         backup_content, total_messages = generate_txt_backup(target_users, db, ctx)
 
+        # Convert to file
         backup_bytes = backup_content.encode('utf-8')
         backup_file = BytesIO(backup_bytes)
 
+        # Create filename
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         if len(target_users) == 1:
             filename = f"backup_{target_users[0].name}_{timestamp}.txt"
         else:
             filename = f"backup_multiple_{timestamp}.txt"
 
+        # Send file
         await ctx.reply(
             f"✅ Backup created! ({total_messages} messages from {len(target_users)} user(s))",
             file=discord.File(backup_file, filename)
@@ -193,6 +201,7 @@ async def backup_stats(ctx, user: discord.User = None):
     db = SessionLocal()
 
     try:
+        # Admin only
         if not ctx.author.guild_permissions.administrator:
             await ctx.reply("⚠️ Only administrators can view backup stats.")
             return
@@ -206,12 +215,14 @@ async def backup_stats(ctx, user: discord.User = None):
                 await ctx.reply(f"⚠️ No messages found for {target_user.name}")
                 return
 
+            # Get statistics for specified user
             total_messages = db.query(Message).filter(Message.user_id == db_user.id).count()
             guild_messages = db.query(Message).filter(
                 Message.user_id == db_user.id,
                 Message.guild_id == ctx.guild.id
             ).count()
 
+            # Get attachment count
             from sqlalchemy import func
             from models.attachment import Attachment
             
@@ -220,6 +231,7 @@ async def backup_stats(ctx, user: discord.User = None):
                 Attachment.message_id.in_(user_messages)
             ).scalar()
 
+            # Create embed
             embed = discord.Embed(
                 title=f"Backup Stats for {target_user.name}",
                 color=discord.Color.blue()
@@ -232,6 +244,7 @@ async def backup_stats(ctx, user: discord.User = None):
             await ctx.reply(embed=embed)
             return
 
+        # If no user specified -> show overall/server stats
         total_messages = db.query(Message).filter(Message.guild_id == ctx.guild.id).count()
         from sqlalchemy import func
         from models.attachment import Attachment

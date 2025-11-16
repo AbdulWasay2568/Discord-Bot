@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 
+# Create attachments directory if it doesn't exist
 ATTACHMENTS_DIR = Path(__file__).parent.parent / "attachments"
 ATTACHMENTS_DIR.mkdir(exist_ok=True)
 
@@ -23,15 +24,18 @@ async def download_attachment(url: str, filename: str, message_id: int) -> tuple
         tuple: (local_path, success_bool)
     """
     try:
+        # Create message-specific directory
         msg_dir = ATTACHMENTS_DIR / f"msg_{message_id}"
         msg_dir.mkdir(exist_ok=True)
         
+        # Create safe filename
         safe_filename = "".join(c for c in filename if c.isalnum() or c in "._-")
         if not safe_filename:
             safe_filename = f"attachment_{datetime.now().timestamp()}"
         
         local_path = msg_dir / safe_filename
         
+        # Download file
         async with aiohttp.ClientSession() as session:
             async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as response:
                 if response.status == 200:

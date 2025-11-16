@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 from discord.ext import commands
 
+# Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from bot.utils.file_reader import read_file

@@ -13,8 +13,8 @@ class Attachment(Base):
     url = Column(String(1000), nullable=False)
     content_type = Column(String(255))
     size = Column(BigInteger)
-    local_path = Column(String(500), nullable=True)  
-    is_downloaded = Column(Boolean, default=False)  
+    local_path = Column(String(500), nullable=True)  # Path to locally stored file
+    is_downloaded = Column(Boolean, default=False)  # Flag if file was downloaded
     created_at = Column(DateTime, default=datetime.utcnow)
 
     message = relationship("Message", back_populates="attachments")

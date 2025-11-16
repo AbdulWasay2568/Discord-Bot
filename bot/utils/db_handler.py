@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 import discord
 
+# Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from db.db_utils import (
@@ -22,6 +23,7 @@ async def handle_message_save(message: discord.Message):
     
     db = SessionLocal()
     try:
+        # Save/get user
         user = get_or_create_user(
             db,
             discord_id=str(message.author.id),
@@ -31,6 +33,7 @@ async def handle_message_save(message: discord.Message):
             discriminator=message.author.discriminator
         )
         
+        # Save message
         saved_message = save_message(
             db,
             discord_message_id=message.id,
@@ -41,7 +44,9 @@ async def handle_message_save(message: discord.Message):
             is_bot_message=message.author.bot
         )
         
+        # Save attachments
         for attachment in message.attachments:
+            # Download attachment immediately to prevent URL expiration
             local_path, success = await download_attachment(
                 attachment.url,
                 attachment.filename,
@@ -73,6 +78,7 @@ async def handle_reaction_add(reaction: discord.Reaction, user: discord.User):
     
     db = SessionLocal()
     try:
+        # Get or create user
         db_user = get_or_create_user(
             db,
             discord_id=str(user.id),
@@ -82,6 +88,7 @@ async def handle_reaction_add(reaction: discord.Reaction, user: discord.User):
             discriminator=user.discriminator
         )
         
+        # Get the message from database
         from models.message import Message
         db_message = db.query(Message).filter(
             Message.discord_message_id == reaction.message.id
@@ -108,10 +115,12 @@ async def handle_reaction_remove(reaction: discord.Reaction, user: discord.User)
     
     db = SessionLocal()
     try:
+        # Get user
         from models.user import User
         db_user = db.query(User).filter(User.discord_id == str(user.id)).first()
         
         if db_user:
+            # Get the message from database
             from models.message import Message
             db_message = db.query(Message).filter(
                 Message.discord_message_id == reaction.message.id

@@ -5,6 +5,7 @@ This file allows running the bot with: python -m bot or python bot
 import sys
 from pathlib import Path
 
+# Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from bot.main import bot, DISCORD_TOKEN
