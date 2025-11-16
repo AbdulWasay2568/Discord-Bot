@@ -1,4 +1,9 @@
+import sys
+from pathlib import Path
 from discord.ext import commands
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 from bot.utils.ai import generate_ai_reply
 
 @commands.command()

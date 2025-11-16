@@ -6,7 +6,7 @@ import openpyxl
 import discord
 
 MAX_FILE_SIZE_MB = 5
-MAX_FILE_CONTENT = 4000  # characters
+MAX_FILE_CONTENT = 4000  
 
 async def read_file(file: discord.Attachment) -> str:
     """Read file content with size/content checks."""
@@ -18,11 +18,9 @@ async def read_file(file: discord.Attachment) -> str:
         content = ""
         filename = file.filename.lower()
 
-        # Text / CSV
         if filename.endswith((".txt", ".csv")):
             content = file_bytes.decode('utf-8', errors='ignore')
 
-        # PDF
         elif filename.endswith(".pdf"):
             pdf_reader = PdfReader(io.BytesIO(file_bytes))
             for page in pdf_reader.pages:
@@ -30,7 +28,6 @@ async def read_file(file: discord.Attachment) -> str:
                 if page_text:
                     content += page_text + "\n"
 
-        # Image OCR
         elif filename.endswith((".png", ".jpg", ".jpeg", ".bmp")):
             try:
                 image = Image.open(io.BytesIO(file_bytes))
@@ -40,7 +37,6 @@ async def read_file(file: discord.Attachment) -> str:
             except Exception:
                 return "⚠️ Cannot process image (is Tesseract installed?)."
 
-        # Excel (.xlsx)
         elif filename.endswith(".xlsx"):
             try:
                 wb = openpyxl.load_workbook(filename=io.BytesIO(file_bytes), data_only=True)
@@ -52,7 +48,6 @@ async def read_file(file: discord.Attachment) -> str:
             except Exception as e:
                 return f"⚠️ Error reading Excel file: {str(e)}"
 
-        # Other files
         else:
             content = file_bytes.decode('utf-8', errors='ignore')
 

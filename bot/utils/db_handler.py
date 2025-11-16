@@ -1,11 +1,19 @@
 """
 Database handler for Discord events - saves messages, attachments, and reactions
 """
+import sys
+from pathlib import Path
 import discord
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 from db.db_utils import (
     SessionLocal, get_or_create_user, save_message, 
-    save_attachment, save_reaction, remove_reaction, get_message_reactions
+    save_attachment, save_reaction, remove_reaction
 )
+from models.message import Message
+from models.user import User
+from bot.utils.file_manager import download_attachment
 
 async def handle_message_save(message: discord.Message):
     """Save a message and its attachments to database"""
@@ -14,7 +22,6 @@ async def handle_message_save(message: discord.Message):
     
     db = SessionLocal()
     try:
-        # Save/get user
         user = get_or_create_user(
             db,
             discord_id=str(message.author.id),
@@ -24,7 +31,6 @@ async def handle_message_save(message: discord.Message):
             discriminator=message.author.discriminator
         )
         
-        # Save message
         saved_message = save_message(
             db,
             discord_message_id=message.id,
@@ -35,8 +41,13 @@ async def handle_message_save(message: discord.Message):
             is_bot_message=message.author.bot
         )
         
-        # Save attachments
         for attachment in message.attachments:
+            local_path, success = await download_attachment(
+                attachment.url,
+                attachment.filename,
+                saved_message.id
+            )
+            
             save_attachment(
                 db,
                 discord_attachment_id=attachment.id,
@@ -44,7 +55,9 @@ async def handle_message_save(message: discord.Message):
                 filename=attachment.filename,
                 url=attachment.url,
                 content_type=attachment.content_type,
-                size=attachment.size
+                size=attachment.size,
+                local_path=local_path if success else None,
+                is_downloaded=success
             )
     
     except Exception as e:
@@ -60,7 +73,6 @@ async def handle_reaction_add(reaction: discord.Reaction, user: discord.User):
     
     db = SessionLocal()
     try:
-        # Get or create user
         db_user = get_or_create_user(
             db,
             discord_id=str(user.id),
@@ -70,7 +82,6 @@ async def handle_reaction_add(reaction: discord.Reaction, user: discord.User):
             discriminator=user.discriminator
         )
         
-        # Get the message from database
         from models.message import Message
         db_message = db.query(Message).filter(
             Message.discord_message_id == reaction.message.id
@@ -97,12 +108,10 @@ async def handle_reaction_remove(reaction: discord.Reaction, user: discord.User)
     
     db = SessionLocal()
     try:
-        # Get user
         from models.user import User
         db_user = db.query(User).filter(User.discord_id == str(user.id)).first()
         
         if db_user:
-            # Get the message from database
             from models.message import Message
             db_message = db.query(Message).filter(
                 Message.discord_message_id == reaction.message.id

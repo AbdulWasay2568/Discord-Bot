@@ -2,15 +2,12 @@ import os
 import google.generativeai as genai
 from dotenv import load_dotenv
 
-# ---------------- ENV ----------------
 load_dotenv()
 GEMINI_KEY = os.getenv("GEMINI_KEY")
 
-# ---------------- Gemini Setup ----------------
 genai.configure(api_key=GEMINI_KEY)
 model = genai.GenerativeModel("gemini-flash-latest")
 
-# ---------------- AI FUNCTION ----------------
 async def generate_ai_reply(prompt: str) -> str:
     """
     Generate a concise answer from Gemini AI (max 5 lines).

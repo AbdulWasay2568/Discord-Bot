@@ -10,11 +10,10 @@ A Discord bot that combines AI-powered chat with comprehensive message backup an
 - Concise 5-line responses by default
 
 ### 💾 Message Backup
-- **Single-user backup** - Export your own messages
-- **Multi-user backup** - Export multiple users' messages
-- **Server-wide backup** - Export all messages (admin only)
-- **Compact & Detailed formats** - Choose your preferred format
-- **Automatic archival** - All messages automatically saved to database
+- **Admin-only backups** - Administrators can export messages for specific users or the whole server
+- **Multi-user backup (admin)** - Export messages for one or more mentioned users
+- **Server-wide backup (admin)** - Export all messages from the server
+- **Automatic archival** - All messages (including bot replies) are saved to the database for reliable exports
 
 ### 📎 Attachment Tracking
 - Stores file metadata (name, size, type, URL)
@@ -33,90 +32,29 @@ A Discord bot that combines AI-powered chat with comprehensive message backup an
 
 ---
 
-## Installation
+### Backup Commands (Admin Only)
 
-### Prerequisites
-- Python 3.10+
-- Discord Bot Token
-- Google Gemini API Key
-- Database URL (SQLite, PostgreSQL, MySQL, etc.)
+Only server administrators may run backup-related commands. Available commands:
 
-### Setup
+- `!backup all`
+   - Export all messages from the server into a TXT file.
+   - Example: `!backup all`
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/AbdulWasay2568/Discord-Bot.git
-   cd Discord-Bot
-   ```
+- `!backup @user1 @user2 ...`
+   - Export messages for the specified Discord user mentions. You must supply mentions.
+   - Example: `!backup @Alice @Bob`
 
-2. **Create virtual environment**
-   ```bash
-   python -m venv venv
-   .\venv\Scripts\Activate.ps1  # Windows
-   # or
-   source venv/bin/activate     # Linux/Mac
-   ```
+- `!backup_stats`
+   - Show server-level message/attachment statistics.
+   - Example: `!backup_stats`
 
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+- `!backup_stats @user`
+   - Show message/attachment statistics for a specific user.
+   - Example: `!backup_stats @Alice`
 
-4. **Create `.env` file**
-   ```env
-   DISCORD_TOKEN=your_discord_bot_token_here
-   GEMINI_KEY=your_google_gemini_api_key_here
-   DATABASE_URL=sqlite:///discord_bot.db
-   # For PostgreSQL: postgresql://user:password@localhost/dbname
-   # For MySQL: mysql+pymysql://user:password@localhost/dbname
-   ```
-
-5. **Initialize database** (automatically done on first run)
-   ```bash
-   python bot/main.py
-   ```
-
-6. **Run the bot**
-   ```bash
-   python bot/main.py
-   ```
-
----
-
-## Commands
-
-### AI Commands
-
-#### `!ask <question>`
-Ask a question to Gemini AI and get a concise answer (max 5 lines).
-
-**Example:**
-```
-!ask What is the capital of France?
-```
-
-#### `!askfile <question>`
-Ask a question about an uploaded file (PDF, Image, Excel, CSV, TXT).
-
-**Example:**
-```
-!askfile Summarize this document
-[Attach a PDF or image]
-```
-
----
-
-### Backup Commands
-
-#### `!backup`
-Export your own messages to a TXT file.
-
-**Example:**
-```
-!backup
-```
-
-**Output:** Creates `backup_yourname_YYYYMMDD_HHMMSS.txt`
+Notes:
+- Backups include bot replies if the bot has saved those messages to the database (the bot now saves its own messages).
+- The bot will send the generated TXT file as a Discord attachment; download it from Discord to keep a local copy.
 
 ---
 
@@ -397,38 +335,9 @@ DATABASE_URL=mysql+pymysql://user:password@localhost:3306/discord_bot
 - Attach Files
 
 ### Command Permissions
-- `!ask`, `!askfile`, `!backup_stats` - All users
-- `!backup (single/multi user)` - All users
+- `!ask`, `!askfile` - All users
+- `!backup`, `!backup_stats` - Administrators only
 - `!backup all` - Administrators only
-
----
-
-## Troubleshooting
-
-### Bot doesn't respond to commands
-- Ensure bot has `Send Messages` permission
-- Check that `MESSAGE_CONTENT` intent is enabled
-- Verify Discord token is correct in `.env`
-
-### Database errors
-- Check `DATABASE_URL` is correct in `.env`
-- Ensure database server is running (if using PostgreSQL/MySQL)
-- For SQLite, ensure the directory is writable
-
-### Gemini API errors
-- Verify API key is valid in `.env`
-- Check API quotas on Google Cloud Console
-- Ensure API is enabled for your project
-
-### File download issues
-- Check Discord client is updated
-- Ensure sufficient disk space
-- Try a different device or web browser
-
-### Message not saved to database
-- Bot wasn't running when message was sent
-- Check database connection
-- Verify bot has message history permissions
 
 ---
 
@@ -456,24 +365,3 @@ Found a bug or need help?
 This project is open source. See LICENSE file for details.
 
 ---
-
-## Contributors
-
-- **Abdul Wasay** - Main Developer
-
----
-
-## Changelog
-
-### Version 1.0.0
-- ✅ Initial release
-- ✅ AI chat with Gemini
-- ✅ Single & multi-user backup
-- ✅ Message/attachment/reaction tracking
-- ✅ Database integration
-- ✅ TXT export functionality
-- ✅ Statistics command
-
----
-
-**Last Updated:** November 15, 2025
