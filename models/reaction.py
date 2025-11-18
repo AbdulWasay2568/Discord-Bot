@@ -13,7 +13,7 @@ class Reaction(Base):
     message_id = Column(Integer, ForeignKey("messages.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     emoji = Column(String(100), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
 
     message = relationship("Message", back_populates="reactions")
     user = relationship("User", back_populates="reactions")

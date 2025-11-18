@@ -14,3 +14,4 @@ async def ask(ctx, *, prompt: str):
     async with ctx.typing():
         reply = await generate_ai_reply(concise_prompt)
     await ctx.reply(reply)
+

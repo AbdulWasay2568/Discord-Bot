@@ -4,5 +4,7 @@ from .user import User
 from .message import Message
 from .attachment import Attachment
 from .reaction import Reaction
-
-__all__ = ['Base', 'User', 'Message', 'Attachment', 'Reaction']
+from .channel import Channel
+from .guild import Guild
+    
+__all__ = ['Base', 'User', 'Message', 'Attachment', 'Reaction', 'Channel', 'Guild']
