@@ -1,44 +1,45 @@
-import sys
-from pathlib import Path
+"""Compatibility utilities for synchronous DB access used by legacy commands.
+
+Provides a synchronous `SessionLocal` and helper functions like
+`get_message_attachments` so older parts of the code (e.g. backup commands)
+can continue to use the sync SQLAlchemy API while other modules use the
+async engine.
+"""
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-import os
-from dotenv import load_dotenv
+from sqlalchemy.orm import sessionmaker
+from bot.config.settings import DATABASE_URL
 
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is not set in environment")
 
-from models.base import Base
-from models.user import User
-from models.message import Message
-from models.attachment import Attachment
-from models.reaction import Reaction
+# If the project-wide DATABASE_URL is set to an async driver (e.g.
+# "postgresql+asyncpg://..."), convert it to a sync URL so the legacy
+# synchronous Session can connect via psycopg2 (postgresql://...).
+sync_db_url = DATABASE_URL
+if "+asyncpg" in sync_db_url:
+    sync_db_url = sync_db_url.replace("+asyncpg", "")
+if sync_db_url.startswith("postgresql+psycopg2://"):
+    sync_db_url = sync_db_url.replace("postgresql+psycopg2://", "postgresql://", 1)
 
-from db.connection import engine, SessionLocal
-
-
-def create_db():
-    """Create all tables"""
-    Base.metadata.create_all(bind=engine)
+engine = create_engine(sync_db_url, echo=False)
+SessionLocal = sessionmaker(bind=engine)
 
 
-# Re-export commonly used DB helpers from the queries package so callers
-# can import them from `db.db_utils` (keeps older import paths working).
-from db.queries.user import get_or_create_user
-from db.queries.messages import save_message
-from db.queries.attachments import save_attachment
-from db.queries.reactions import save_reaction, remove_reaction
-from db.queries.attachments import get_message_attachments
+def get_message_attachments(db_session, message_id):
+    """Return attachments for a message as stored in the Message.attachments JSON column.
 
-__all__ = [
-    "engine",
-    "SessionLocal",
-    "create_db",
-    "get_or_create_user",
-    "save_message",
-    "save_attachment",
-    "save_reaction",
-    "remove_reaction",
-    "get_message_attachments",
-]
+    Parameters
+    - db_session: a SQLAlchemy sync Session (from `SessionLocal()`)
+    - message_id: integer message id
 
+    Returns: list of attachment dicts (may be empty)
+    """
+    try:
+        from models.models import Message
+    except Exception:
+        return []
+
+    message = db_session.query(Message).filter(Message.id == message_id).first()
+    if not message:
+        return []
+    return message.attachments or []

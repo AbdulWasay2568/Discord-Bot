@@ -1,10 +1,11 @@
 import discord
 from discord.ext import commands
 from bot.config.settings import DISCORD_TOKEN
-from db.db_utils import create_db
-from bot.commands import setup_commands
+from .commands import setup_commands
 from bot.utils.db_handler import (
+    handle_message_delete,
     handle_message_save,
+    handle_message_update,
     handle_reaction_add,
     handle_reaction_remove,
 )
@@ -15,13 +16,15 @@ from bot.utils.ai import generate_ai_reply
 
 # ==================== INITIAL SETUP ====================
 
-# Initialize database
-create_db()
-
 # Discord Intent Settings
 intents = discord.Intents.default()
 intents.message_content = True
+intents.messages = True
+intents.guild_messages = True
 intents.reactions = True
+intents.guilds = True
+intents.members = True      
+intents.guild_reactions = True   
 
 # Bot instance
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -60,6 +63,15 @@ async def on_message(message: discord.Message):
             reply = await generate_ai_reply(concise_prompt)
             await message.reply(reply)
 
+@bot.event
+async def on_message_edit(before: discord.Message, after: discord.Message):
+    print("Message edit event triggered")
+    await handle_message_update(after)
+
+@bot.event
+async def on_message_delete(message: discord.Message):
+    print("Message delete event triggered")
+    await handle_message_delete(message)
 
 # ==================== REACTION EVENTS ====================
 
@@ -72,6 +84,7 @@ async def on_reaction_add(reaction: discord.Reaction, user: discord.User):
 @bot.event
 async def on_reaction_remove(reaction: discord.Reaction, user: discord.User):
     """Remove reaction from database"""
+    print("Reaction removed event triggered")
     await handle_reaction_remove(reaction, user)
 
 

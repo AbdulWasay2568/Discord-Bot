@@ -1,4 +1,4 @@
 """Database Module"""
-from . import db_utils
+from .connection import AsyncSessionLocal, engine
 
-__all__ = ['db_utils']
+__all__ = ['AsyncSessionLocal', 'engine']
