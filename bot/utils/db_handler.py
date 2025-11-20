@@ -1,9 +1,4 @@
-import sys
-from pathlib import Path
 import discord
-
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
 from sqlalchemy.future import select
 from db.connection import AsyncSessionLocal
 from db.queries.user import upsert_user
@@ -11,15 +6,16 @@ from db.queries.messages import create_message, update_message, delete_message
 from models.models import User, Message, MessageType
 from bot.utils.file_manager import download_attachment
 from datetime import datetime
+from .serialize_datetime import serialize_datetime
+
 
 async def handle_message_save(message: discord.Message):
-    """Save a message and its attachments to database."""
     if not message or not message.author:
         return
 
     async with AsyncSessionLocal() as db:
         try:
-            # Upsert user
+            # 1) Upsert user
             user_model = User(
                 id=int(message.author.id),
                 username=getattr(message.author, "name", None),
@@ -31,7 +27,7 @@ async def handle_message_save(message: discord.Message):
             )
             saved_user = await upsert_user(db, user_model)
 
-            # Save attachments
+            # 2) Save attachments
             attachments_list = []
             for attachment in message.attachments:
                 local_path, success = await download_attachment(
@@ -49,22 +45,77 @@ async def handle_message_save(message: discord.Message):
                     "is_downloaded": success,
                 })
 
-            message_type = getattr(message, "type", None)
-            if isinstance(message_type, int):
-                message_type = MessageType.DEFAULT
-            elif isinstance(message_type, str):
-                message_type = MessageType[message_type.upper()]
-            else:
-                message_type = MessageType.DEFAULT
+            # 3) Save embeds
+            embeds_list = [embed.to_dict() for embed in message.embeds]
 
+            # 4) Detect message type
+            raw_type = getattr(message, "type", None)
+            if isinstance(raw_type, int):
+                message_type = MessageType.DEFAULT
+            else:
+                try:
+                    message_type = MessageType[raw_type.name]
+                except:
+                    message_type = MessageType.DEFAULT
+
+            # 5) Handle message_reference and referenced_message
+            message_reference_data = getattr(message, "reference", None)
+            message_reference = None
+            referenced_message = None
+
+            if message_reference_data:
+                # Save reference IDs
+                message_reference = {
+                    "message_id": getattr(message_reference_data, "message_id", None),
+                    "channel_id": getattr(message_reference_data, "channel_id", None),
+                    "guild_id": getattr(message_reference_data, "guild_id", None),
+                    "fail_if_not_exists": getattr(message_reference_data, "fail_if_not_exists", True)
+                }
+
+                # Try getting full referenced message
+                ref_msg = getattr(message, "referenced_message", None)
+                if not ref_msg and message_reference.get("channel_id") and message_reference.get("message_id"):
+                    try:
+                        ref_channel = message.guild.get_channel(message_reference["channel_id"]) \
+                            or await message.guild.fetch_channel(message_reference["channel_id"])
+                        ref_msg = await ref_channel.fetch_message(message_reference["message_id"])
+                    except:
+                        ref_msg = None
+
+                if ref_msg:
+                    referenced_message = {
+                        "id": int(ref_msg.id),
+                        "channel_id": int(ref_msg.channel.id) if getattr(ref_msg, "channel", None) else None,
+                        "author": {
+                            "id": int(ref_msg.author.id),
+                            "username": getattr(ref_msg.author, "name", None),
+                            "discriminator": getattr(ref_msg.author, "discriminator", None),
+                            "global_name": getattr(ref_msg.author, "global_name", None),
+                            "avatar": str(ref_msg.author.avatar.url) if getattr(ref_msg.author, "avatar", None) else None,
+                            "bot": bool(getattr(ref_msg.author, "bot", False)),
+                            "system": bool(getattr(ref_msg.author, "system", False)),
+                        },
+                        "content": ref_msg.content,
+                        "attachments": [att.to_dict() for att in getattr(ref_msg, "attachments", [])],
+                        "embeds": [emb.to_dict() for emb in getattr(ref_msg, "embeds", [])],
+                        "timestamp": serialize_datetime(getattr(ref_msg, "created_at", None)),
+                        "edited_timestamp": serialize_datetime(getattr(ref_msg, "edited_at", None)),
+                        "type": getattr(ref_msg, "type", None).name if getattr(ref_msg, "type", None) else None
+                    }
+
+
+            # 6) Build message model
             message_model = Message(
                 id=int(message.id),
-                channel_id=int(message.channel.id) if getattr(message, "channel", None) else None,
+                channel_id=int(message.channel.id),
                 author_id=saved_user.id,
                 content=message.content,
                 attachments=attachments_list,
+                embeds=embeds_list,
                 type=message_type,
-                timestamp=getattr(message, "created_at", datetime.utcnow())
+                timestamp=getattr(message, "created_at", datetime.utcnow()),
+                message_reference=message_reference,
+                referenced_message=referenced_message
             )
 
             await create_message(db, message_model)
@@ -84,32 +135,84 @@ async def handle_message_update(message: discord.Message):
                 "edited_timestamp": getattr(message, "edited_at", datetime.utcnow()),
             }
 
-            # Update attachments if changed
-            if message.attachments:
-                attachments_list = []
-                for attachment in message.attachments:
-                    local_path, success = await download_attachment(
-                        attachment.url,
-                        attachment.filename,
-                        message.id
-                    )
-                    attachments_list.append({
-                        "id": attachment.id,
-                        "filename": attachment.filename,
-                        "url": attachment.url,
-                        "content_type": getattr(attachment, "content_type", None),
-                        "size": getattr(attachment, "size", None),
-                        "local_path": local_path if success else None,
-                        "is_downloaded": success,
-                    })
-                updates["attachments"] = attachments_list
+            # --- Update attachments ---
+            attachments_list = []
+            for attachment in message.attachments:
+                local_path, success = await download_attachment(
+                    attachment.url,
+                    attachment.filename,
+                    message.id
+                )
+                attachments_list.append({
+                    "id": attachment.id,
+                    "filename": attachment.filename,
+                    "url": attachment.url,
+                    "content_type": getattr(attachment, "content_type", None),
+                    "size": getattr(attachment, "size", None),
+                    "local_path": local_path if success else None,
+                    "is_downloaded": success,
+                })
+            updates["attachments"] = attachments_list
 
-            await update_message(db, message_id=int(message.id), author_id=int(message.author.id), updates=updates)
+            # --- Update embeds ---
+            embeds_list = [embed.to_dict() for embed in message.embeds]
+            updates["embeds"] = embeds_list
+
+            # --- Update message_reference and referenced_message ---
+            message_reference_data = getattr(message, "reference", None)
+            if message_reference_data:
+                message_reference = {
+                    "message_id": getattr(message_reference_data, "message_id", None),
+                    "channel_id": getattr(message_reference_data, "channel_id", None),
+                    "guild_id": getattr(message_reference_data, "guild_id", None),
+                    "fail_if_not_exists": getattr(message_reference_data, "fail_if_not_exists", True)
+                }
+                updates["message_reference"] = message_reference
+
+                # Try fetching referenced message
+                ref_msg = getattr(message, "referenced_message", None)
+                if not ref_msg and message_reference.get("channel_id") and message_reference.get("message_id"):
+                    try:
+                        ref_channel = message.guild.get_channel(message_reference["channel_id"]) \
+                            or await message.guild.fetch_channel(message_reference["channel_id"])
+                        ref_msg = await ref_channel.fetch_message(message_reference["message_id"])
+                    except:
+                        ref_msg = None
+
+                if ref_msg:
+                    referenced_message = {
+                        "id": int(ref_msg.id),
+                        "channel_id": int(ref_msg.channel.id) if getattr(ref_msg, "channel", None) else None,
+                        "author": {
+                            "id": int(ref_msg.author.id),
+                            "username": getattr(ref_msg.author, "name", None),
+                            "discriminator": getattr(ref_msg.author, "discriminator", None),
+                            "global_name": getattr(ref_msg.author, "global_name", None),
+                            "avatar": str(ref_msg.author.avatar.url) if getattr(ref_msg.author, "avatar", None) else None,
+                            "bot": bool(getattr(ref_msg.author, "bot", False)),
+                            "system": bool(getattr(ref_msg.author, "system", False)),
+                        },
+                        "content": ref_msg.content,
+                        "attachments": [att.to_dict() for att in getattr(ref_msg, "attachments", [])],
+                        "embeds": [emb.to_dict() for emb in getattr(ref_msg, "embeds", [])],
+                        "timestamp": serialize_datetime(getattr(ref_msg, "created_at", None)),
+                        "edited_timestamp": serialize_datetime(getattr(ref_msg, "edited_at", None)),
+                        "type": getattr(ref_msg, "type", None).name if getattr(ref_msg, "type", None) else None
+                    }
+                    updates["referenced_message"] = referenced_message
+
+            # Save updates
+            await update_message(
+                db,
+                message_id=int(message.id),
+                author_id=int(message.author.id),
+                updates=updates
+            )
+
             print(f"Message {message.id} updated successfully.")
 
         except Exception as e:
             print(f"Error updating message: {e}")
-
 
 async def handle_message_delete(message: discord.Message):
     if not message or not message.author:

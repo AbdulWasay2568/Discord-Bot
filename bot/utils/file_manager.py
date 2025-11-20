@@ -1,28 +1,12 @@
-"""
-File manager - Download and store Discord attachments locally
-Prevents attachment URLs from expiring
-"""
 import aiohttp
 import os
 from pathlib import Path
 from datetime import datetime
 
-# Create attachments directory if it doesn't exist
 ATTACHMENTS_DIR = Path(__file__).parent.parent / "attachments"
 ATTACHMENTS_DIR.mkdir(exist_ok=True)
 
 async def download_attachment(url: str, filename: str, message_id: int) -> tuple[str, bool]:
-    """
-    Download a Discord attachment and store it locally
-    
-    Args:
-        url: Discord attachment URL
-        filename: Original filename
-        message_id: Discord message ID (for organizing files)
-    
-    Returns:
-        tuple: (local_path, success_bool)
-    """
     try:
         # Create message-specific directory
         msg_dir = ATTACHMENTS_DIR / f"msg_{message_id}"
@@ -53,7 +37,6 @@ async def download_attachment(url: str, filename: str, message_id: int) -> tuple
         return "", False
 
 def get_attachment_path(message_id: int, filename: str) -> Path:
-    """Get the local path for an attachment"""
     msg_dir = ATTACHMENTS_DIR / f"msg_{message_id}"
     safe_filename = "".join(c for c in filename if c.isalnum() or c in "._-")
     return msg_dir / safe_filename
@@ -64,30 +47,3 @@ def get_attachment_size(local_path: str) -> int:
         return os.path.getsize(local_path)
     except:
         return 0
-
-def cleanup_old_attachments(days: int = 30) -> int:
-    """
-    Remove attachments older than specified days
-    
-    Args:
-        days: Number of days to keep attachments
-    
-    Returns:
-        Number of files deleted
-    """
-    if not ATTACHMENTS_DIR.exists():
-        return 0
-    
-    deleted_count = 0
-    cutoff_time = datetime.now().timestamp() - (days * 86400)
-    
-    for file_path in ATTACHMENTS_DIR.rglob("*"):
-        if file_path.is_file():
-            if file_path.stat().st_mtime < cutoff_time:
-                try:
-                    file_path.unlink()
-                    deleted_count += 1
-                except:
-                    pass
-    
-    return deleted_count

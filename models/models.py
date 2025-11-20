@@ -111,7 +111,7 @@ class Message(Base):
     flags = Column(Integer, nullable=True)
 
     message_reference = Column(MutableDict.as_mutable(JSON), nullable=True)
-    referenced_message_id = Column(BigInteger, nullable=True)
+    referenced_message = Column(MutableDict.as_mutable(JSON), nullable=True) 
     interaction_metadata = Column(MutableDict.as_mutable(JSON), nullable=True)
 
     components = Column(JSON, nullable=True)
