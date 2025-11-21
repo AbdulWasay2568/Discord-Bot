@@ -1,4 +1,5 @@
 import discord
+from sqlalchemy import func
 from sqlalchemy.future import select
 from db.connection import AsyncSessionLocal
 from db.queries.user import upsert_user
@@ -294,16 +295,11 @@ async def handle_reaction_add(reaction: discord.Reaction, user: discord.User):
 
 
 async def handle_reaction_remove(reaction: discord.Reaction, user: discord.User):
-    print(f"[REMOVE] Reaction removal triggered by user={user.id}, message={reaction.message.id}")
-
     if user.bot:
-        print("[REMOVE] Ignored because user is a bot")
         return
 
     async with AsyncSessionLocal() as db:
         try:
-            # 1) FETCH MESSAGE
-            print(f"[REMOVE] Fetching message {reaction.message.id}...")
             result = await db.execute(select(Message).filter(Message.id == reaction.message.id))
             db_message = result.scalar_one_or_none()
 
@@ -328,7 +324,6 @@ async def handle_reaction_remove(reaction: discord.Reaction, user: discord.User)
             # 3) FIND AND UPDATE REACTION ENTRY
             for r in db_message.reactions:
                 if r.get('emoji', {}).get('id') == emoji_id and r.get('emoji', {}).get('name') == emoji_name:
-                    print("[REMOVE] Matching reaction found.")
 
                     if 'users' in r and int(user.id) in r['users']:
                         print(f"[REMOVE] Removing user {user.id} from reaction...")
@@ -339,8 +334,6 @@ async def handle_reaction_remove(reaction: discord.Reaction, user: discord.User)
 
                     if r['count'] > 0:
                         updated_reactions.append(r)
-                    else:
-                        print("[REMOVE] Reaction count = 0 → removing reaction entry completely.")
                 else:
                     updated_reactions.append(r)
 
@@ -349,7 +342,55 @@ async def handle_reaction_remove(reaction: discord.Reaction, user: discord.User)
             await db.commit()
             await db.refresh(db_message)
 
-            print("[REMOVE] ✅ Reaction removed and DB updated successfully.")
+            print("✅ Reaction removed and DB updated successfully.")
 
         except Exception as e:
-            print(f"[REMOVE] ❌ Error removing reaction: {e}")
+            print(f"❌ Error removing reaction: {e}")
+
+
+async def fetch_filtered_messages(filters):
+    async with AsyncSessionLocal() as db:
+        stmt = select(Message)
+
+        # Apply filters
+        if filters["channels"]:
+            stmt = stmt.filter(Message.channel_id.in_(filters["channels"]))
+
+        if filters["members"]:
+            stmt = stmt.filter(Message.author_id.in_(filters["members"]))
+
+        if filters["reactions"]:
+            stmt = stmt.filter(func.json_array_length(Message.reactions) > 0)
+
+        if filters["from_date"]:
+            stmt = stmt.filter(Message.timestamp >= filters["from_date"])
+
+        if filters["to_date"]:
+            stmt = stmt.filter(Message.timestamp <= filters["to_date"])
+
+        if filters["query"]:
+            stmt = stmt.filter(Message.content.ilike(f"%{filters['query']}%"))
+
+        if filters["has_attachments"] is not None:
+            if filters["has_attachments"]:
+                stmt = stmt.filter(Message.attachments != [])
+            else:
+                stmt = stmt.filter(Message.attachments == [])
+
+        if filters["attachment_name_contains"]:
+            stmt = stmt.filter(
+                func.json_each_text(Message.attachments).like(
+                    f"%{filters['attachment_name_contains']}%"
+                )
+            )
+
+        # Sorting
+        if filters["sort_by"] == "created_at":
+            stmt = stmt.order_by(Message.timestamp.desc())
+        elif filters["sort_by"] == "reactions_desc":
+            stmt = stmt.order_by(func.json_array_length(Message.reactions).desc())
+
+        stmt = stmt.limit(filters["limit"])
+
+        result = await db.execute(stmt)
+        return result.scalars().all()
