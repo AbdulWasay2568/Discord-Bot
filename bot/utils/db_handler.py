@@ -1,9 +1,10 @@
+import asyncio
 import discord
 from sqlalchemy import func, or_, String
 from sqlalchemy.future import select
 from db.connection import AsyncSessionLocal
 from db.queries.user import upsert_user
-from db.queries.messages import create_message, update_message, delete_message
+from db.queries.messages import create_message, update_message, delete_message, get_message
 from models.models import User, Message, MessageType
 from bot.utils.file_manager import download_attachment
 from datetime import datetime
@@ -438,6 +439,84 @@ async def filter_command(filters: dict):
         except Exception as e:
             return []
 
+async def get_latest_message_in_channel(channel_id: int) -> Message| None:
+    async with AsyncSessionLocal() as db:
+        try:
+            print('fetching latest message in channel from DB...')
+            result = await db.execute(
+                select(Message)
+                .where(Message.channel_id == channel_id)
+                .order_by(Message.timestamp.desc())
+                .offset(1)
+                .limit(1)
+                
+            )
+            message = result.scalar_one_or_none()
+            print('Latest message ID fetched from DB:', message.id)
+            return message.id
+        except Exception as e:
+            print(f"Error fetching latest message in channel {channel_id}: {e}")
+            return None
 
 
+async def fetch_discord_history(channel, after_message_id=None):
+    messages = []
+    try:
+        print('fetching discord history...')
+        async for message in channel.history(limit=2, after=discord.Object(id=after_message_id) if after_message_id else None):
+            messages.append(message)
+        return messages
+    except Exception as e:
+        print(f"Error fetching discord history: {e}")
+        return []
 
+# async def get_messages_from_discord(channel_id:int, message_id:int, token,  time:str):
+    # try:    
+    #     url = f"https://discord.com/api/v10/channels/{channel_id}/messages"
+    #     params = {
+    #         "limit": 100,
+    #         time: message_id
+    #     }
+    #     headers = {
+    #         "Authorization": f"Bot {token}"
+    #     }
+
+    # except Exception as e:
+    #     print(f"Error fetching messages from Discord API: {e}")
+    #     return None
+
+
+async def reconcile_channel(channel: discord.TextChannel):
+    try:
+        print('reconciling channel...')
+        latest_message_id = await get_latest_message_in_channel(channel.id)
+        
+        async with AsyncSessionLocal() as db:
+            while True:
+                messages = await fetch_discord_history(channel, latest_message_id)
+
+                if not messages:
+                    break
+
+                print(f"Fetched {len(messages)} messages from Discord")
+                for msg in messages:
+                    print(f"Message ID: {msg.id}, Author: {msg.author}, Content: {msg.content}")
+                    
+                    existing_msg = await get_message(db, msg.id)
+                    
+                    if existing_msg:
+                        if msg.edited_at != existing_msg.edited_timestamp:
+                            await handle_message_update(msg)
+                            print(f"Updated message in DB: {msg.id}")
+                    else:
+                        await handle_message_save(msg)
+                        print(f"Saved message in DB: {msg.id}")
+                
+                latest_message_id = messages[-1].id
+                print('going to sleep')
+                await asyncio.sleep(1)
+                print('trying again')
+
+            print('channel reconciled successfully.')
+    except Exception as e:
+        print(f"Error reconciling channel {channel.id}: {e}")
