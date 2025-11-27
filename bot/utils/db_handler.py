@@ -1,5 +1,5 @@
 import discord
-from sqlalchemy import func
+from sqlalchemy import func, or_, String
 from sqlalchemy.future import select
 from db.connection import AsyncSessionLocal
 from db.queries.user import upsert_user
@@ -342,55 +342,102 @@ async def handle_reaction_remove(reaction: discord.Reaction, user: discord.User)
             await db.commit()
             await db.refresh(db_message)
 
-            print("✅ Reaction removed and DB updated successfully.")
+            print("Reaction removed and DB updated successfully.")
 
         except Exception as e:
-            print(f"❌ Error removing reaction: {e}")
+            print(f"Error removing reaction: {e}")
 
+async def filter_command(filters: dict):
 
-async def fetch_filtered_messages(filters):
     async with AsyncSessionLocal() as db:
-        stmt = select(Message)
-
-        # Apply filters
-        if filters["channels"]:
-            stmt = stmt.filter(Message.channel_id.in_(filters["channels"]))
-
-        if filters["members"]:
-            stmt = stmt.filter(Message.author_id.in_(filters["members"]))
-
-        if filters["reactions"]:
-            stmt = stmt.filter(func.json_array_length(Message.reactions) > 0)
-
-        if filters["from_date"]:
-            stmt = stmt.filter(Message.timestamp >= filters["from_date"])
-
-        if filters["to_date"]:
-            stmt = stmt.filter(Message.timestamp <= filters["to_date"])
-
-        if filters["query"]:
-            stmt = stmt.filter(Message.content.ilike(f"%{filters['query']}%"))
-
-        if filters["has_attachments"] is not None:
-            if filters["has_attachments"]:
-                stmt = stmt.filter(Message.attachments != [])
-            else:
-                stmt = stmt.filter(Message.attachments == [])
-
-        if filters["attachment_name_contains"]:
-            stmt = stmt.filter(
-                func.json_each_text(Message.attachments).like(
-                    f"%{filters['attachment_name_contains']}%"
+        try:
+            query = select(Message)
+                        
+            # FILTER BY CHANNELS
+            if filters.get("channels") and len(filters["channels"]) > 0:
+                # Convert channel names/ids to integers
+                channel_ids = []
+                for channel in filters["channels"]:
+                    try:
+                        channel_ids.append(int(channel))
+                    except ValueError:
+                        pass
+                if channel_ids:
+                    query = query.filter(Message.channel_id.in_(channel_ids))
+            
+            # FILTER BY MEMBERS
+            if filters.get("members") and len(filters["members"]) > 0:
+                # Convert member names/ids to integers
+                member_ids = []
+                for member in filters["members"]:
+                    try:
+                        member_ids.append(int(member))
+                    except ValueError:
+                        pass
+                if member_ids:
+                    query = query.filter(Message.author_id.in_(member_ids))
+            
+            if filters.get("from_date"):
+                query = query.filter(Message.timestamp >= filters["from_date"])
+            if filters.get("to_date"):
+                query = query.filter(Message.timestamp <= filters["to_date"])
+            
+            if filters.get("has_attachments") is True:
+                query = query.filter(func.json_array_length(Message.attachments) > 0)
+            
+            if filters.get("attachment_name_contains"):
+                search_term = filters["attachment_name_contains"]
+                query = query.filter(
+                    func.cast(Message.attachments, String).ilike(f"%{search_term}%")
                 )
-            )
+            
+            sort_by = filters.get("sort_by", "created_descending")
+            if sort_by == "created_ascending":
+                query = query.order_by(Message.timestamp.asc())
+            elif sort_by == "reactions_desc":
+                query = query.order_by(func.json_array_length(Message.reactions).desc())
+            else:
+                query = query.order_by(Message.timestamp.desc())
+            
+            limit = filters.get("limit", 20)
+            try:
+                limit = int(limit)
+            except (ValueError, TypeError):
+                limit = 20
+            
+            if not (filters.get("reactions") and len(filters["reactions"]) > 0):
+                query = query.limit(limit)
+            
+            result = await db.execute(query)
+            messages = result.scalars().all()
+            
+            if filters.get("reactions") and len(filters["reactions"]) > 0:
+                filtered_messages = []
+                
+                for msg in messages:
+                    if msg.reactions:  
+                        for emoji_input in filters["reactions"]:
+                            emoji_found = False
+                            
+                            for reaction in msg.reactions:
+                                reaction_emoji = reaction.get('emoji', {})
+                                reaction_emoji_name = reaction_emoji.get('name', '')
 
-        # Sorting
-        if filters["sort_by"] == "created_at":
-            stmt = stmt.order_by(Message.timestamp.desc())
-        elif filters["sort_by"] == "reactions_desc":
-            stmt = stmt.order_by(func.json_array_length(Message.reactions).desc())
+                                if reaction_emoji_name == emoji_input:
+                                    emoji_found = True
+                                    break
+                            
+                            if emoji_found:
+                                filtered_messages.append(msg)
+                                break
+                
+                messages = filtered_messages[:limit]
+            
+            return messages
+            
+        except Exception as e:
+            return []
 
-        stmt = stmt.limit(filters["limit"])
 
-        result = await db.execute(stmt)
-        return result.scalars().all()
+
+

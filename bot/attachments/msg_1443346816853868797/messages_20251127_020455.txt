@@ -1,0 +1,309 @@
+================================================================================
+MESSAGE SEARCH RESULTS
+================================================================================
+
+FILTERS APPLIED:
+--------------------------------------------------------------------------------
+Channels: All channels
+Members: AWD
+Reactions: All reactions
+From Date: Not set
+To Date: Not set
+Has Attachments: False
+Sort By: created_descending
+Total Results: 20 messages
+
+================================================================================
+
+MESSAGE 1
+--------------------------------------------------------------------------------
+Message ID: 1443346763930009652
+Channel ID: 1439218275136442541
+Author ID: 1439218663906345080
+Timestamp: 2025-11-26 21:04:44.607000+00:00
+
+Content:
+(No content)
+
+Embeds (1):
+  - Title: Select Filters
+    Description: Use the buttons below to set filters, then click Submit to see the selected filters....
+
+
+MESSAGE 2
+--------------------------------------------------------------------------------
+Message ID: 1443346761149317202
+Channel ID: 1439218275136442541
+Author ID: 728130188570787931
+Timestamp: 2025-11-26 21:04:43.944000+00:00
+
+Content:
+!list
+
+
+MESSAGE 3
+--------------------------------------------------------------------------------
+Message ID: 1443342966474412285
+Channel ID: 1439218275136442541
+Author ID: 1439218663906345080
+Timestamp: 2025-11-26 20:49:39.223000+00:00
+
+Content:
+(No content)
+
+Embeds (1):
+  - Title: Message 10/10
+    Description: *(No content)*...
+
+
+MESSAGE 4
+--------------------------------------------------------------------------------
+Message ID: 1443342964691566745
+Channel ID: 1439218275136442541
+Author ID: 1439218663906345080
+Timestamp: 2025-11-26 20:49:38.798000+00:00
+
+Content:
+(No content)
+
+Embeds (1):
+  - Title: Message 9/10
+    Description: *(No content)*...
+
+
+MESSAGE 5
+--------------------------------------------------------------------------------
+Message ID: 1443342963215306763
+Channel ID: 1439218275136442541
+Author ID: 1439218663906345080
+Timestamp: 2025-11-26 20:49:38.446000+00:00
+
+Content:
+(No content)
+
+Embeds (1):
+  - Title: Message 8/10
+    Description: *(No content)*...
+
+
+MESSAGE 6
+--------------------------------------------------------------------------------
+Message ID: 1443342961894228129
+Channel ID: 1439218275136442541
+Author ID: 1439218663906345080
+Timestamp: 2025-11-26 20:49:38.131000+00:00
+
+Content:
+(No content)
+
+Embeds (1):
+  - Title: Message 7/10
+    Description: *(No content)*...
+
+
+MESSAGE 7
+--------------------------------------------------------------------------------
+Message ID: 1443342959872311379
+Channel ID: 1439218275136442541
+Author ID: 1439218663906345080
+Timestamp: 2025-11-26 20:49:37.649000+00:00
+
+Content:
+(No content)
+
+Embeds (1):
+  - Title: Message 6/10
+    Description: *(No content)*...
+
+
+MESSAGE 8
+--------------------------------------------------------------------------------
+Message ID: 1443342958542717059
+Channel ID: 1439218275136442541
+Author ID: 1439218663906345080
+Timestamp: 2025-11-26 20:49:37.332000+00:00
+
+Content:
+(No content)
+
+Embeds (1):
+  - Title: Message 5/10
+    Description: *(No content)*...
+
+
+MESSAGE 9
+--------------------------------------------------------------------------------
+Message ID: 1443342956898811955
+Channel ID: 1439218275136442541
+Author ID: 1439218663906345080
+Timestamp: 2025-11-26 20:49:36.940000+00:00
+
+Content:
+(No content)
+
+Embeds (1):
+  - Title: Message 4/10
+    Description: *(No content)*...
+
+
+MESSAGE 10
+--------------------------------------------------------------------------------
+Message ID: 1443342955258712154
+Channel ID: 1439218275136442541
+Author ID: 1439218663906345080
+Timestamp: 2025-11-26 20:49:36.549000+00:00
+
+Content:
+(No content)
+
+Embeds (1):
+  - Title: Message 3/10
+    Description: *(No content)*...
+
+
+MESSAGE 11
+--------------------------------------------------------------------------------
+Message ID: 1443342953040052245
+Channel ID: 1439218275136442541
+Author ID: 1439218663906345080
+Timestamp: 2025-11-26 20:49:36.020000+00:00
+
+Content:
+(No content)
+
+Embeds (1):
+  - Title: Message 2/10
+    Description: !list...
+
+
+MESSAGE 12
+--------------------------------------------------------------------------------
+Message ID: 1443342951056019557
+Channel ID: 1439218275136442541
+Author ID: 1439218663906345080
+Timestamp: 2025-11-26 20:49:35.547000+00:00
+
+Content:
+(No content)
+
+Embeds (1):
+  - Title: Message 1/10
+    Description: *(No content)*...
+
+
+MESSAGE 13
+--------------------------------------------------------------------------------
+Message ID: 1443342949470441552
+Channel ID: 1439218275136442541
+Author ID: 1439218663906345080
+Timestamp: 2025-11-26 20:49:35.169000+00:00
+
+Content:
+(No content)
+
+Embeds (1):
+  - Title: Message Search Results
+    Description: No description...
+
+
+MESSAGE 14
+--------------------------------------------------------------------------------
+Message ID: 1443342882084753601
+Channel ID: 1439218275136442541
+Author ID: 1439218663906345080
+Timestamp: 2025-11-26 20:49:19.103000+00:00
+
+Content:
+(No content)
+
+Embeds (1):
+  - Title: Select Filters
+    Description: Use the buttons below to set filters, then click Submit to see the selected filters....
+
+
+MESSAGE 15
+--------------------------------------------------------------------------------
+Message ID: 1443342878293360760
+Channel ID: 1439218275136442541
+Author ID: 728130188570787931
+Timestamp: 2025-11-26 20:49:18.199000+00:00
+
+Content:
+!list
+
+
+MESSAGE 16
+--------------------------------------------------------------------------------
+Message ID: 1443342695102808234
+Channel ID: 1439218275136442541
+Author ID: 1439218663906345080
+Timestamp: 2025-11-26 20:48:34.523000+00:00
+
+Content:
+(No content)
+
+Embeds (1):
+  - Title: Message 10/10
+    Description: *(No content)*...
+
+
+MESSAGE 17
+--------------------------------------------------------------------------------
+Message ID: 1443342693492330496
+Channel ID: 1439218275136442541
+Author ID: 1439218663906345080
+Timestamp: 2025-11-26 20:48:34.139000+00:00
+
+Content:
+(No content)
+
+Embeds (1):
+  - Title: Message 9/10
+    Description: Invalid date format for to_date. Use YYYY-MM-DD...
+
+
+MESSAGE 18
+--------------------------------------------------------------------------------
+Message ID: 1443342692074651698
+Channel ID: 1439218275136442541
+Author ID: 1439218663906345080
+Timestamp: 2025-11-26 20:48:33.801000+00:00
+
+Content:
+(No content)
+
+Embeds (1):
+  - Title: Message 8/10
+    Description: !list...
+
+
+MESSAGE 19
+--------------------------------------------------------------------------------
+Message ID: 1443342690174373960
+Channel ID: 1439218275136442541
+Author ID: 1439218663906345080
+Timestamp: 2025-11-26 20:48:33.348000+00:00
+
+Content:
+(No content)
+
+Embeds (1):
+  - Title: Message 7/10
+    Description: *(No content)*...
+
+
+MESSAGE 20
+--------------------------------------------------------------------------------
+Message ID: 1443342688882659470
+Channel ID: 1439218275136442541
+Author ID: 1439218663906345080
+Timestamp: 2025-11-26 20:48:33.040000+00:00
+
+Content:
+(No content)
+
+Embeds (1):
+  - Title: Message 6/10
+    Description: *(No content)*...
+
+
