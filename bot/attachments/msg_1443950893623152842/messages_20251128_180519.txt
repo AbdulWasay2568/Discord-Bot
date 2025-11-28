@@ -1,0 +1,41 @@
+FILTERS APPLIED:
+
+Channels: All channels
+Members: All members
+Reactions: 👍
+From Date: Not set
+To Date: Not set
+Has Attachments: False
+Sort By: created_descending
+Total Results: 2 messages
+
+================================================================================
+
+MESSAGE 1
+--------------------------------------------------------------------------------
+Message ID: 1443946279200624832
+Channel ID: 1439218275136442541
+Author ID: 728130188570787931
+Timestamp: 2025-11-28 12:47:00.186000+00:00
+
+Content:
+hello
+
+Reactions (1):
+  - 👍 x1
+
+
+MESSAGE 2
+--------------------------------------------------------------------------------
+Message ID: 1443945143056076860
+Channel ID: 1439218275136442541
+Author ID: 728130188570787931
+Timestamp: 2025-11-28 12:42:29.308000+00:00
+
+Content:
+!list
+
+Reactions (1):
+  - 👍 x1
+
+

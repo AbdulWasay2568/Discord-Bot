@@ -233,7 +233,6 @@ async def handle_reaction_add(reaction: discord.Reaction, user: discord.User):
 
     async with AsyncSessionLocal() as db:
         try:
-            # UPSERT USER
             db_user = await upsert_user(db, User(
                 id=int(user.id),
                 username=getattr(user, "name", None),
@@ -244,20 +243,17 @@ async def handle_reaction_add(reaction: discord.Reaction, user: discord.User):
                 system=bool(user.system),
             ))
 
-            # FETCH MESSAGE
             result = await db.execute(select(Message).filter(Message.id == reaction.message.id))
             db_message = result.scalar_one_or_none()
             if not db_message:
                 print(f"No message found in DB with ID {reaction.message.id}")
                 return
 
-            # EXTRACT EMOJI
             emoji_id = str(reaction.emoji.id) if hasattr(reaction.emoji, 'id') and reaction.emoji.id else None
             emoji_name = str(reaction.emoji.name) if hasattr(reaction.emoji, 'name') else str(reaction.emoji)
 
             reactions = db_message.reactions or []
 
-            # CHECK IF THIS EMOJI ALREADY EXISTS IN REACTIONS
             existing_reaction = None
             for r in reactions:
                 r_emoji = r.get('emoji', {})
@@ -284,12 +280,11 @@ async def handle_reaction_add(reaction: discord.Reaction, user: discord.User):
                     'users': [db_user.id]
                 })
 
-            # IMPORTANT: Assign full list back to db_message.reactions
             db_message.reactions = reactions
             await db.commit()
             await db.refresh(db_message)
 
-            print(f"Reaction added: emoji={emoji_name}, user={user.id}")
+            print(f"Reaction added: emoji={emoji_name}, user={user.id}, message={reaction.message.id}")
 
         except Exception as e:
             print(f"Error adding reaction: {e}")
@@ -354,9 +349,7 @@ async def filter_command(filters: dict):
         try:
             query = select(Message)
                         
-            # FILTER BY CHANNELS
             if filters.get("channels") and len(filters["channels"]) > 0:
-                # Convert channel names/ids to integers
                 channel_ids = []
                 for channel in filters["channels"]:
                     try:
@@ -366,9 +359,7 @@ async def filter_command(filters: dict):
                 if channel_ids:
                     query = query.filter(Message.channel_id.in_(channel_ids))
             
-            # FILTER BY MEMBERS
             if filters.get("members") and len(filters["members"]) > 0:
-                # Convert member names/ids to integers
                 member_ids = []
                 for member in filters["members"]:
                     try:
@@ -401,10 +392,6 @@ async def filter_command(filters: dict):
                 query = query.order_by(Message.timestamp.desc())
             
             limit = filters.get("limit", 20)
-            try:
-                limit = int(limit)
-            except (ValueError, TypeError):
-                limit = 20
             
             if not (filters.get("reactions") and len(filters["reactions"]) > 0):
                 query = query.limit(limit)
@@ -459,41 +446,31 @@ async def get_latest_message_in_channel(channel_id: int) -> Message| None:
             return None
 
 
-async def fetch_discord_history(channel, after_message_id=None):
+async def fetch_discord_history(channel, message_id=None, backfill=False):
     messages = []
     try:
-        print('fetching discord history...')
-        async for message in channel.history(limit=2, after=discord.Object(id=after_message_id) if after_message_id else None):
+        if backfill:
+            print('fetching discord history before last message...')
+            async for message in channel.history(limit=100, before=discord.Object(id=message_id) if message_id else None):
+                messages.append(message)
+            return messages
+        
+        print('fetching discord history after last message...')
+        async for message in channel.history(limit=100, after=discord.Object(id=message_id) if message_id else None):
             messages.append(message)
         return messages
     except Exception as e:
         print(f"Error fetching discord history: {e}")
         return []
 
-# async def get_messages_from_discord(channel_id:int, message_id:int, token,  time:str):
-    # try:    
-    #     url = f"https://discord.com/api/v10/channels/{channel_id}/messages"
-    #     params = {
-    #         "limit": 100,
-    #         time: message_id
-    #     }
-    #     headers = {
-    #         "Authorization": f"Bot {token}"
-    #     }
-
-    # except Exception as e:
-    #     print(f"Error fetching messages from Discord API: {e}")
-    #     return None
-
-
-async def reconcile_channel(channel: discord.TextChannel):
+async def reconcile_channel(channel: discord.TextChannel, backfill: bool):
     try:
         print('reconciling channel...')
         latest_message_id = await get_latest_message_in_channel(channel.id)
         
         async with AsyncSessionLocal() as db:
             while True:
-                messages = await fetch_discord_history(channel, latest_message_id)
+                messages = await fetch_discord_history(channel, latest_message_id, backfill=backfill)
 
                 if not messages:
                     break
