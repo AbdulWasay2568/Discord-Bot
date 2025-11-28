@@ -11,6 +11,21 @@ from datetime import datetime
 from .serialize_datetime import serialize_datetime
 
 
+def reaction_dict(emoji, users_list):
+    emoji_id = str(emoji.id) if hasattr(emoji, 'id') and emoji.id else None
+    emoji_name = str(emoji.name) if hasattr(emoji, 'name') else str(emoji)
+    
+    return {
+        'count': len(users_list),
+        'count_details': {'burst': 0, 'normal': len(users_list)},
+        'me': False,
+        'me_burst': False,
+        'emoji': {'id': emoji_id, 'name': emoji_name},
+        'burst_colors': [],
+        'users': users_list
+    }
+
+
 async def handle_message_save(message: discord.Message):
     if not message or not message.author:
         return
@@ -50,7 +65,13 @@ async def handle_message_save(message: discord.Message):
             # 3) Save embeds
             embeds_list = [embed.to_dict() for embed in message.embeds]
 
-            # 4) Detect message type
+            # 4) Save reactions
+            emojis_list = []
+            for reaction in message.reactions:
+                users = [u.id async for u in reaction.users()]
+                emojis_list.append(reaction_dict(reaction.emoji, users))
+
+            # 5) Detect message type
             raw_type = getattr(message, "type", None)
             if isinstance(raw_type, int):
                 message_type = MessageType.DEFAULT
@@ -60,7 +81,7 @@ async def handle_message_save(message: discord.Message):
                 except:
                     message_type = MessageType.DEFAULT
 
-            # 5) Handle message_reference and referenced_message
+            # 6) Handle message_reference and referenced_message
             message_reference_data = getattr(message, "reference", None)
             message_reference = None
             referenced_message = None
@@ -106,7 +127,7 @@ async def handle_message_save(message: discord.Message):
                     }
 
 
-            # 6) Build message model
+            # 7) Build message model
             message_model = Message(
                 id=int(message.id),
                 channel_id=int(message.channel.id),
@@ -114,6 +135,7 @@ async def handle_message_save(message: discord.Message):
                 content=message.content,
                 attachments=attachments_list,
                 embeds=embeds_list,
+                reactions=emojis_list,
                 type=message_type,
                 timestamp=getattr(message, "created_at", datetime.utcnow()),
                 message_reference=message_reference,
@@ -159,6 +181,13 @@ async def handle_message_update(message: discord.Message):
             # --- Update embeds ---
             embeds_list = [embed.to_dict() for embed in message.embeds]
             updates["embeds"] = embeds_list
+
+            # --- Update reactions ---
+            emojis_list = []
+            for reaction in message.reactions:
+                users = [u.id async for u in reaction.users()]
+                emojis_list.append(reaction_dict(reaction.emoji, users))
+            updates["reactions"] = emojis_list
 
             # --- Update message_reference and referenced_message ---
             message_reference_data = getattr(message, "reference", None)
@@ -261,24 +290,14 @@ async def handle_reaction_add(reaction: discord.Reaction, user: discord.User):
                     existing_reaction = r
                     break
 
-            # UPDATE EXISTING OR ADD NEW REACTION
             if existing_reaction:
                 if 'users' not in existing_reaction:
                     existing_reaction['users'] = []
                 if db_user.id not in existing_reaction['users']:
                     existing_reaction['users'].append(db_user.id)
-                existing_reaction['count'] = len(existing_reaction['users'])
-                existing_reaction['count_details'] = {'burst': 0, 'normal': existing_reaction['count']}
+                reactions[reactions.index(existing_reaction)] = reaction_dict(reaction.emoji, existing_reaction['users'])
             else:
-                reactions.append({
-                    'count': 1,
-                    'count_details': {'burst': 0, 'normal': 1},
-                    'me': False,
-                    'me_burst': False,
-                    'emoji': {'id': emoji_id, 'name': emoji_name},
-                    'burst_colors': [],
-                    'users': [db_user.id]
-                })
+                reactions.append(reaction_dict(reaction.emoji, [db_user.id]))
 
             db_message.reactions = reactions
             await db.commit()
