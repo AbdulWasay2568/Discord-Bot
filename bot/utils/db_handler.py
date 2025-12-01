@@ -10,6 +10,19 @@ from bot.utils.file_manager import download_attachment
 from datetime import datetime
 from .serialize_datetime import serialize_datetime
 
+async def user_helper_function(db, discord_user: discord.User) -> User:
+    user_model = User(
+        id=int(discord_user.id),
+        username=getattr(discord_user, "name", None),
+        discriminator=getattr(discord_user, "discriminator", None),
+        global_name=getattr(discord_user, "global_name", None),
+        avatar=str(discord_user.avatar.url) if getattr(discord_user, "avatar", None) else None,
+        bot=bool(getattr(discord_user, "bot", False)),
+        system=bool(getattr(discord_user, "system", False)),
+    )
+    saved_user = await upsert_user(db, user_model)
+    return saved_user
+    
 
 def reaction_dict(emoji, users_list):
     emoji_id = str(emoji.id) if hasattr(emoji, 'id') and emoji.id else None
@@ -99,16 +112,7 @@ async def handle_message_save(message: discord.Message):
     async with AsyncSessionLocal() as db:
         try:
             # 1) Upsert user
-            user_model = User(
-                id=int(message.author.id),
-                username=getattr(message.author, "name", None),
-                discriminator=getattr(message.author, "discriminator", None),
-                global_name=getattr(message.author, "global_name", None),
-                avatar=str(message.author.avatar.url) if getattr(message.author, "avatar", None) else None,
-                bot=bool(getattr(message.author, "bot", False)),
-                system=bool(getattr(message.author, "system", False)),
-            )
-            saved_user = await upsert_user(db, user_model)
+            saved_user = await user_helper_function(db, message.author)
 
             # 2) Save attachments
             attachments_list = await extract_attachments(message)
@@ -226,15 +230,7 @@ async def handle_reaction_add(reaction: discord.Reaction, user: discord.User):
 
     async with AsyncSessionLocal() as db:
         try:
-            db_user = await upsert_user(db, User(
-                id=int(user.id),
-                username=getattr(user, "name", None),
-                discriminator=getattr(user, "discriminator", None),
-                global_name=getattr(user, "global_name", None),
-                avatar=str(getattr(user.avatar, "url", None)) if user.avatar else None,
-                bot=bool(user.bot),
-                system=bool(user.system),
-            ))
+            db_user = await user_helper_function(db, user)
 
             result = await db.execute(select(Message).filter(Message.id == reaction.message.id))
             db_message = result.scalar_one_or_none()
@@ -283,20 +279,17 @@ async def handle_reaction_remove(reaction: discord.Reaction, user: discord.User)
             db_message = result.scalar_one_or_none()
 
             if not db_message:
-                print(f"[REMOVE] ❌ No message found with ID {reaction.message.id}. Cannot remove reaction.")
+                print(f"No message found with ID {reaction.message.id}. Cannot remove reaction.")
                 return
 
-            print(f"[REMOVE] Message found: {db_message.id}")
-
             if not db_message.reactions:
-                print("[REMOVE] Message has no reactions stored.")
                 return
 
             # 2) EXTRACT EMOJI INFO
             emoji_id = str(reaction.emoji.id) if hasattr(reaction.emoji, 'id') and reaction.emoji.id else None
             emoji_name = str(reaction.emoji.name) if hasattr(reaction.emoji, 'name') else str(reaction.emoji)
 
-            print(f"[REMOVE] Emoji extracted: id={emoji_id}, name={emoji_name}")
+            print(f"Emoji extracted: id={emoji_id}, name={emoji_name}")
 
             updated_reactions = []
 
