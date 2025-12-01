@@ -27,7 +27,6 @@ def reaction_dict(emoji, users_list):
 
 
 async def extract_attachments(message: discord.Message):
-    """Extract and download attachments from a message."""
     attachments_list = []
     for attachment in message.attachments:
         local_path, success = await download_attachment(
@@ -48,7 +47,6 @@ async def extract_attachments(message: discord.Message):
 
 
 async def build_referenced_message(message_reference_data, message: discord.Message):
-    """Build referenced message data from message reference."""
     if not message_reference_data:
         return None, None
     
@@ -430,7 +428,6 @@ async def get_latest_message_in_channel(channel_id: int) -> Message| None:
             print(f"Error fetching latest message in channel {channel_id}: {e}")
             return None
 
-
 async def fetch_discord_history(channel, message_id=None, backfill=False):
     messages = []
     try:
@@ -450,7 +447,6 @@ async def fetch_discord_history(channel, message_id=None, backfill=False):
 
 async def reconcile_channel(channel: discord.TextChannel, backfill: bool):
     try:
-        print('reconciling channel...')
         latest_message_id = await get_latest_message_in_channel(channel.id)
         
         async with AsyncSessionLocal() as db:
@@ -461,9 +457,7 @@ async def reconcile_channel(channel: discord.TextChannel, backfill: bool):
                     break
 
                 print(f"Fetched {len(messages)} messages from Discord")
-                for msg in messages:
-                    print(f"Message ID: {msg.id}, Author: {msg.author}, Content: {msg.content}")
-                    
+                for msg in messages:                    
                     existing_msg = await get_message(db, msg.id)
                     
                     if existing_msg:
@@ -477,7 +471,6 @@ async def reconcile_channel(channel: discord.TextChannel, backfill: bool):
                 latest_message_id = messages[-1].id
                 print('going to sleep')
                 await asyncio.sleep(1)
-                print('trying again')
 
             print('channel reconciled successfully.')
     except Exception as e:
