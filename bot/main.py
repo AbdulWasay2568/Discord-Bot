@@ -38,9 +38,7 @@ setup_commands(bot)
 # ==================== MESSAGE EVENTS ====================
 
 @bot.event
-async def on_message(message: discord.Message):
-    """Handle incoming messages"""
-    
+async def on_message(message: discord.Message):    
     # Save all incoming messages (bot + user)
     await handle_message_save(message)
 
@@ -65,28 +63,22 @@ async def on_message(message: discord.Message):
 
 @bot.event
 async def on_message_edit(before: discord.Message, after: discord.Message):
-    print("Message edit event triggered")
     await handle_message_update(after)
+
 
 @bot.event
 async def on_message_delete(message: discord.Message):
-    print("Message delete event triggered")
     await handle_message_delete(message)
 
 # ==================== REACTION EVENTS ====================
 
 @bot.event
 async def on_reaction_add(reaction: discord.Reaction, user: discord.User):
-    """Save reaction when added"""
     await handle_reaction_add(reaction, user)
-
 
 @bot.event
 async def on_reaction_remove(reaction: discord.Reaction, user: discord.User):
-    """Remove reaction from database"""
-    print("Reaction removed event triggered")
     await handle_reaction_remove(reaction, user)
-
 
 # ==================== BOT READY ====================
 
