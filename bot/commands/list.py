@@ -1,11 +1,9 @@
 import discord
-from discord.ext import commands
 from discord import app_commands
 from discord.ui import View, Button, Modal, TextInput
 from datetime import datetime
 from bot.utils.db_handler import filter_command, format_elapsed_time
 import io
-import time
 
 
 class InputModal(Modal):

@@ -1,5 +1,4 @@
 import discord
-from discord.ext import commands
 from discord import app_commands
 
 @app_commands.command(name="embed", description="Send an example embed")

@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands
-from discord import app_commands
 from bot.config.settings import DISCORD_TOKEN
 from .commands import setup_commands
 from bot.utils.db_handler import (
@@ -27,7 +26,6 @@ intents.guilds = True
 intents.members = True      
 intents.guild_reactions = True   
 
-# Bot instance (slash commands don't use command_prefix)
 bot = commands.Bot(command_prefix=None, intents=intents)
 
 
@@ -81,13 +79,7 @@ async def on_reaction_remove(reaction: discord.Reaction, user: discord.User):
 # ==================== BOT READY ====================
 
 @bot.event
-async def on_ready():
-    try:
-        synced = await bot.tree.sync()
-        print(f"✅ Synced {len(synced)} command(s)")
-    except Exception as e:
-        print(f"❌ Error syncing commands: {e}")
-    
+async def on_ready():    
     print(f"✅ Bot is online as {bot.user}")
     print("✅ Database initialized successfully")
 

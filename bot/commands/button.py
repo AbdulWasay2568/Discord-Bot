@@ -1,14 +1,7 @@
-import sys
-from pathlib import Path
 import discord
-from discord.ext import commands
 from discord import app_commands
-from dotenv import load_dotenv
 import os
 
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-load_dotenv()
 AUTHOR = os.getenv("AUTHOR")
 
 class myView(discord.ui.View):

@@ -413,14 +413,11 @@ async def filter_command(filters: dict):
 async def get_latest_message_in_channel(channel_id: int) -> Message| None:
     async with AsyncSessionLocal() as db:
         try:
-            print('fetching latest message in channel from DB...')
             result = await db.execute(
                 select(Message)
                 .where(Message.channel_id == channel_id)
                 .order_by(Message.timestamp.desc())
-                .offset(1)
                 .limit(1)
-                
             )
             message = result.scalar_one_or_none()
             print('Latest message ID fetched from DB:', message.id)
