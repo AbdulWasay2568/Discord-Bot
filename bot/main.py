@@ -10,8 +10,6 @@ from bot.utils.db_handler import (
     handle_reaction_remove,
 )
 
-from bot.utils.ai import generate_ai_reply
-
 
 
 # ==================== INITIAL SETUP ====================
@@ -26,6 +24,7 @@ intents.guilds = True
 intents.members = True      
 intents.guild_reactions = True   
 
+# Bot instance (slash commands don't use command_prefix)
 bot = commands.Bot(command_prefix=None, intents=intents)
 
 
@@ -38,24 +37,10 @@ setup_commands(bot)
 
 @bot.event
 async def on_message(message: discord.Message):    
-    # Save all incoming messages (bot + user)
-    await handle_message_save(message)
-
-    # Avoid bot self-triggering
     if message.author == bot.user:
         return
 
-    # AI reply when mentioned
-    if bot.user.mentioned_in(message):
-        prompt = message.clean_content.replace(f"@{bot.user.name}", "").strip()
-
-        if not prompt:
-            return
-
-        async with message.channel.typing():
-            concise_prompt = f"Answer concisely in maximum 5 lines: {prompt}"
-            reply = await generate_ai_reply(concise_prompt)
-            await message.reply(reply)
+    await handle_message_save(message)
 
 @bot.event
 async def on_message_edit(before: discord.Message, after: discord.Message):
@@ -79,7 +64,7 @@ async def on_reaction_remove(reaction: discord.Reaction, user: discord.User):
 # ==================== BOT READY ====================
 
 @bot.event
-async def on_ready():    
+async def on_ready():
     print(f"✅ Bot is online as {bot.user}")
     print("✅ Database initialized successfully")
 

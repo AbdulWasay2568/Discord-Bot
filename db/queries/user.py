@@ -1,4 +1,4 @@
-from models.models import User
+from db.schema import User
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 

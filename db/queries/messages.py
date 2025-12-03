@@ -1,4 +1,4 @@
-from models.models import Message
+from db.schema import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from datetime import datetime

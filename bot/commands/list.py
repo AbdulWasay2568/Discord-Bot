@@ -1,8 +1,8 @@
 import discord
 from discord import app_commands
-from discord.ui import View, Button, Modal, TextInput
+from discord.ui import View, Button, Modal, TextInput, Select
 from datetime import datetime
-from bot.utils.db_handler import filter_command, format_elapsed_time
+from bot.utils.db_handler import filter_command
 import io
 
 
@@ -21,9 +21,31 @@ class InputModal(Modal):
         except Exception as e:
             print("Modal submit error:", e)
 
-class FiltersView(View):
-    def __init__(self):
+
+class GenericSelect(Select):
+    def __init__(self, options: list[discord.SelectOption], placeholder: str, callback):
+        super().__init__(
+            placeholder=placeholder,
+            min_values=0,
+            max_values=min(len(options), 25),
+            options=options[:25] 
+        )
+        self.callback_func = callback
+
+    async def callback(self, interaction: discord.Interaction):
+        await self.callback_func(interaction, self.values)
+
+
+class SelectDropdownView(View):
+    def __init__(self, select_menu: Select):
         super().__init__(timeout=300)
+        self.add_item(select_menu)
+
+
+class FiltersView(View):
+    def __init__(self, guild: discord.Guild):
+        super().__init__(timeout=300)
+        self.guild = guild
 
         self.filters = {
             "channels": [],
@@ -37,9 +59,32 @@ class FiltersView(View):
             "limit":20
         }
 
+        # Build channel options
+        channels = [ch for ch in guild.channels if isinstance(ch, discord.TextChannel)]
+        channel_options = [
+            discord.SelectOption(
+                label=ch.name[:100],  
+                value=str(ch.id),
+                description=f"ID: {ch.id}"
+            )
+            for ch in channels
+        ]
+        channel_select = GenericSelect(channel_options, "Select channels...", self.handle_channel_select)
+        self.add_item(channel_select)
+
+        # Build member options
+        member_options = [
+            discord.SelectOption(
+                label=member.display_name[:100],
+                value=str(member.id),
+                description=f"@{member.name}"
+            )
+            for member in guild.members
+        ]
+        member_select = GenericSelect(member_options, "Select members...", self.handle_member_select)
+        self.add_item(member_select)
+
         button_configs = [
-            ("Set Channel(s)","Enter channel(s) separated by commas", "channels"),
-            ("Set Member(s)","Enter member(s) separated by commas", "members"),
             ("Set From Date","Enter from date [YYYY-MM-DD]", "from_date"),
             ("Set To Date","Enter to date [YYYY-MM-DD]", "to_date"),
             ("Set Reaction(s)","Enter reaction(s) separated by commas", "reactions"),
@@ -49,12 +94,20 @@ class FiltersView(View):
             ("Limit","Enter limit [number]", "limit"),
         ]
 
-        for label,input_label,key in button_configs:
+        for label, input_label, key in button_configs:
             self.add_item(self.create_input_button(label, input_label, key))
 
         submit_button = Button(label="Submit", style=discord.ButtonStyle.green, custom_id="submit")
         submit_button.callback = self.submit_callback
         self.add_item(submit_button)
+
+    async def handle_channel_select(self, interaction: discord.Interaction, values: list):
+        self.filters["channels"] = values
+        await interaction.response.defer(ephemeral=True)
+
+    async def handle_member_select(self, interaction: discord.Interaction, values: list):
+        self.filters["members"] = values
+        await interaction.response.defer(ephemeral=True)
 
     def create_input_button(self, label, input_label, key):
         button = Button(label=label, style=discord.ButtonStyle.primary, custom_id=key)
@@ -72,7 +125,7 @@ class FiltersView(View):
         return button
 
     async def handle_input(self, interaction, value, key):
-        if key in ["channels", "members", "reactions"]:
+        if key in ["reactions"]:
             parsed_values = [v.strip() for v in value.split(",") if v.strip()]
             self.filters[key] = parsed_values
         elif key in ["from_date", "to_date"]:
@@ -178,9 +231,10 @@ class FiltersView(View):
         except Exception as e:
             print(f"Error in submit_callback: {e}")
             await interaction.followup.send(f"Error processing filters: {str(e)}", ephemeral=True)
+
 @app_commands.command(name="list", description="List and filter messages with advanced filters")
 async def list(interaction: discord.Interaction):
-    view = FiltersView()
+    view = FiltersView(interaction.guild)
     embed = discord.Embed(
         title="Select Filters",
         description="Use the buttons below to set filters, then click Submit to see the selected filters.",

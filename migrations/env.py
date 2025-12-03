@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
-from models.models import Base
+from db.schema import Base
 from bot.config.settings import DATABASE_URL
 
 # Load environment variables

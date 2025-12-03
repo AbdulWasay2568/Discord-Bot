@@ -1,21 +1,33 @@
 import asyncio
 import discord
 import time
-from sqlalchemy import func, or_, String
+from sqlalchemy import func, String
 from sqlalchemy.future import select
 from db.connection import AsyncSessionLocal
 from db.queries.user import upsert_user
 from db.queries.messages import create_message, update_message, delete_message, get_message, batch_create_messages, batch_update_messages, get_messages_batch
-from models.models import User, Message, MessageType
+from db.schema import User, Message, MessageType
 from bot.utils.file_manager import download_attachment
 from datetime import datetime
 from .serialize_datetime import serialize_datetime
+from .response_time import format_elapsed_time
 
-def format_elapsed_time(start_time: float) -> str:
-    elapsed = time.time() - start_time
-    if elapsed < 1:
-        return f"{elapsed*1000:.0f}ms"
-    return f"{elapsed:.2f}s"
+
+def build_message_model(msg: discord.Message, msg_data: dict) -> Message:
+    return Message(
+        id=int(msg.id),
+        channel_id=int(msg.channel.id),
+        author_id=msg_data["saved_user"].id,
+        content=msg.content,
+        attachments=msg_data["attachments_list"],
+        embeds=msg_data["embeds_list"],
+        reactions=msg_data["emojis_list"],
+        type=msg_data["message_type"],
+        timestamp=getattr(msg, "created_at", datetime.utcnow()),
+        message_reference=msg_data["message_reference"],
+        referenced_message=msg_data["referenced_message"]
+    )
+
 
 async def user_helper_function(db, discord_user: discord.User) -> User:
     user_model = User(
@@ -165,19 +177,7 @@ async def handle_message_save(message: discord.Message):
             msg_data = await prepare_message_data(message, db)
 
             # Build message model
-            message_model = Message(
-                id=int(message.id),
-                channel_id=int(message.channel.id),
-                author_id=msg_data["saved_user"].id,
-                content=message.content,
-                attachments=msg_data["attachments_list"],
-                embeds=msg_data["embeds_list"],
-                reactions=msg_data["emojis_list"],
-                type=msg_data["message_type"],
-                timestamp=getattr(message, "created_at", datetime.utcnow()),
-                message_reference=msg_data["message_reference"],
-                referenced_message=msg_data["referenced_message"]
-            )
+            message_model = build_message_model(message, msg_data)
 
             await create_message(db, message_model)
             print(f"Message {message.id} saved successfully.")
@@ -448,9 +448,7 @@ async def reconcile_channel(channel: discord.TextChannel, backfill: bool):
         start_time = time.time()
         latest_message_id = await get_latest_message_in_channel(channel.id)
         
-        async with AsyncSessionLocal() as db:
-            batch_size = 100
-            
+        async with AsyncSessionLocal() as db:            
             while True:
                 messages = await fetch_discord_history(channel, latest_message_id, backfill=backfill)
 
@@ -495,21 +493,8 @@ async def reconcile_channel(channel: discord.TextChannel, backfill: bool):
                         # Prepare message data
                         msg_data = await prepare_message_data(msg, db)
                         
-                        # Build new message model
-                        message_model = Message(
-                            id=int(msg.id),
-                            channel_id=int(msg.channel.id),
-                            author_id=msg_data["saved_user"].id,
-                            content=msg.content,
-                            attachments=msg_data["attachments_list"],
-                            embeds=msg_data["embeds_list"],
-                            reactions=msg_data["emojis_list"],
-                            type=msg_data["message_type"],
-                            timestamp=getattr(msg, "created_at", datetime.utcnow()),
-                            message_reference=msg_data["message_reference"],
-                            referenced_message=msg_data["referenced_message"]
-                        )
-                        new_messages.append(message_model)
+                        # Build and append new message model
+                        new_messages.append(build_message_model(msg, msg_data))
                 
                 # Batch insert new messages
                 if new_messages:
