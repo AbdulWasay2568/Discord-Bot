@@ -1,8 +1,9 @@
-from discord.ext import commands
 import discord
+from discord.ext import commands
+from discord import app_commands
 
-@commands.command()
-async def embed(ctx):
+@app_commands.command(name="embed", description="Send an example embed")
+async def embed(interaction: discord.Interaction):
     embed = discord.Embed(
         title="Hello!",
         description="This is an embed example.",
@@ -12,4 +13,4 @@ async def embed(ctx):
     embed.set_footer(text="Footer text")
     embed.set_thumbnail(url="https://example.com/image.png")
 
-    await ctx.send(embed=embed)
+    await interaction.response.send_message(embed=embed)

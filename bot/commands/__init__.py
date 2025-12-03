@@ -6,9 +6,10 @@ from .reconcile import reconcile
 from .backfill import backfill
 
 def setup_commands(bot):
-    bot.add_command(ask)
-    bot.add_command(askfile)
-    bot.add_command(embed)
-    bot.add_command(list)
-    bot.add_command(reconcile)
-    bot.add_command(backfill)
+    # Register slash commands
+    bot.tree.add_command(ask)
+    bot.tree.add_command(askfile)
+    bot.tree.add_command(embed)
+    bot.tree.add_command(list)
+    bot.tree.add_command(reconcile)
+    bot.tree.add_command(backfill)

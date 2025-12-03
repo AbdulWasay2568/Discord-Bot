@@ -1,9 +1,12 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 from discord.ui import View, Button, Modal, TextInput
 from datetime import datetime
-from bot.utils.db_handler import filter_command
+from bot.utils.db_handler import filter_command, format_elapsed_time
 import io
+import time
+
 
 class InputModal(Modal):
     def __init__(self, title: str, label: str, callback):
@@ -177,13 +180,13 @@ class FiltersView(View):
         except Exception as e:
             print(f"Error in submit_callback: {e}")
             await interaction.followup.send(f"Error processing filters: {str(e)}", ephemeral=True)
-
-@commands.command()
-async def list(ctx):
+@app_commands.command(name="list", description="List and filter messages with advanced filters")
+async def list(interaction: discord.Interaction):
     view = FiltersView()
     embed = discord.Embed(
         title="Select Filters",
         description="Use the buttons below to set filters, then click Submit to see the selected filters.",
         color=discord.Color.blue()
     )
-    await ctx.send(embed=embed, view=view, ephemeral=True)
+    await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+

@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 from bot.config.settings import DISCORD_TOKEN
 from .commands import setup_commands
 from bot.utils.db_handler import (
@@ -26,8 +27,8 @@ intents.guilds = True
 intents.members = True      
 intents.guild_reactions = True   
 
-# Bot instance
-bot = commands.Bot(command_prefix="!", intents=intents)
+# Bot instance (slash commands don't use command_prefix)
+bot = commands.Bot(command_prefix=None, intents=intents)
 
 
 # ==================== LOAD COMMANDS ====================
@@ -45,9 +46,6 @@ async def on_message(message: discord.Message):
     # Avoid bot self-triggering
     if message.author == bot.user:
         return
-
-    # Allow commands to work
-    await bot.process_commands(message)
 
     # AI reply when mentioned
     if bot.user.mentioned_in(message):
@@ -84,6 +82,12 @@ async def on_reaction_remove(reaction: discord.Reaction, user: discord.User):
 
 @bot.event
 async def on_ready():
+    try:
+        synced = await bot.tree.sync()
+        print(f"✅ Synced {len(synced)} command(s)")
+    except Exception as e:
+        print(f"❌ Error syncing commands: {e}")
+    
     print(f"✅ Bot is online as {bot.user}")
     print("✅ Database initialized successfully")
 

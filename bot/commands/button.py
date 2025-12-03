@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 import discord
 from discord.ext import commands
+from discord import app_commands
 from dotenv import load_dotenv
 import os
 
@@ -12,20 +13,13 @@ AUTHOR = os.getenv("AUTHOR")
 
 class myView(discord.ui.View):
     @discord.ui.button(label="Click")
-    async def click(self,interaction:discord.Interaction, button: discord.ui.Button):
+    async def click(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
            await interaction.response.send_message("Button is clicked", ephemeral=False)
         except Exception as e:
             print(e)
 
-# class myView(discord.ui.View):
-#     @discord.ui.button(label="Click")
-#     async def click(self, interaction: discord.Interaction, button: discord.ui.Button):
-#         await interaction.response.send_message("Button is clicked", ephemeral=True)
-
-
-
-@commands.command()
-async def button(ctx):
+@app_commands.command(name="button", description="Send a message with a button")
+async def button(interaction: discord.Interaction):
     view = myView()
-    await ctx.reply("this is button",view=view)
+    await interaction.response.send_message("this is button", view=view)

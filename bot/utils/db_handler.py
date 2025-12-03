@@ -1,14 +1,21 @@
 import asyncio
 import discord
+import time
 from sqlalchemy import func, or_, String
 from sqlalchemy.future import select
 from db.connection import AsyncSessionLocal
 from db.queries.user import upsert_user
-from db.queries.messages import create_message, update_message, delete_message, get_message
+from db.queries.messages import create_message, update_message, delete_message, get_message, batch_create_messages, batch_update_messages, get_messages_batch
 from models.models import User, Message, MessageType
 from bot.utils.file_manager import download_attachment
 from datetime import datetime
 from .serialize_datetime import serialize_datetime
+
+def format_elapsed_time(start_time: float) -> str:
+    elapsed = time.time() - start_time
+    if elapsed < 1:
+        return f"{elapsed*1000:.0f}ms"
+    return f"{elapsed:.2f}s"
 
 async def user_helper_function(db, discord_user: discord.User) -> User:
     user_model = User(
@@ -105,60 +112,75 @@ async def build_referenced_message(message_reference_data, message: discord.Mess
     return message_reference, referenced_message
 
 
+async def prepare_message_data(message: discord.Message, db):
+    # 1) Upsert user
+    saved_user = await user_helper_function(db, message.author)
+
+    # 2) Save attachments
+    attachments_list = await extract_attachments(message)
+
+    # 3) Save embeds
+    embeds_list = [embed.to_dict() for embed in message.embeds]
+
+    # 4) Save reactions
+    emojis_list = []
+    for reaction in message.reactions:
+        users = [u.id async for u in reaction.users()]
+        emojis_list.append(reaction_dict(reaction.emoji, users))
+
+    # 5) Detect message type
+    raw_type = getattr(message, "type", None)
+    if isinstance(raw_type, int):
+        message_type = MessageType.DEFAULT
+    else:
+        try:
+            message_type = MessageType[raw_type.name]
+        except:
+            message_type = MessageType.DEFAULT
+
+    # 6) Handle message_reference and referenced_message
+    message_reference_data = getattr(message, "reference", None)
+    message_reference, referenced_message = await build_referenced_message(
+        message_reference_data, message
+    )
+
+    return {
+        "saved_user": saved_user,
+        "attachments_list": attachments_list,
+        "embeds_list": embeds_list,
+        "emojis_list": emojis_list,
+        "message_type": message_type,
+        "message_reference": message_reference,
+        "referenced_message": referenced_message,
+    }
+
+
 async def handle_message_save(message: discord.Message):
     if not message or not message.author:
         return
 
     async with AsyncSessionLocal() as db:
         try:
-            # 1) Upsert user
-            saved_user = await user_helper_function(db, message.author)
+            # Prepare all message data
+            msg_data = await prepare_message_data(message, db)
 
-            # 2) Save attachments
-            attachments_list = await extract_attachments(message)
-
-            # 3) Save embeds
-            embeds_list = [embed.to_dict() for embed in message.embeds]
-
-            # 4) Save reactions
-            emojis_list = []
-            for reaction in message.reactions:
-                users = [u.id async for u in reaction.users()]
-                emojis_list.append(reaction_dict(reaction.emoji, users))
-
-            # 5) Detect message type
-            raw_type = getattr(message, "type", None)
-            if isinstance(raw_type, int):
-                message_type = MessageType.DEFAULT
-            else:
-                try:
-                    message_type = MessageType[raw_type.name]
-                except:
-                    message_type = MessageType.DEFAULT
-
-            # 6) Handle message_reference and referenced_message
-            message_reference_data = getattr(message, "reference", None)
-            message_reference, referenced_message = await build_referenced_message(
-                message_reference_data, message
-            )
-
-
-            # 7) Build message model
+            # Build message model
             message_model = Message(
                 id=int(message.id),
                 channel_id=int(message.channel.id),
-                author_id=saved_user.id,
+                author_id=msg_data["saved_user"].id,
                 content=message.content,
-                attachments=attachments_list,
-                embeds=embeds_list,
-                reactions=emojis_list,
-                type=message_type,
+                attachments=msg_data["attachments_list"],
+                embeds=msg_data["embeds_list"],
+                reactions=msg_data["emojis_list"],
+                type=msg_data["message_type"],
                 timestamp=getattr(message, "created_at", datetime.utcnow()),
-                message_reference=message_reference,
-                referenced_message=referenced_message
+                message_reference=msg_data["message_reference"],
+                referenced_message=msg_data["referenced_message"]
             )
 
             await create_message(db, message_model)
+            print(f"Message {message.id} saved successfully.")
 
         except Exception as e:
             print(f"Error saving message: {e}")
@@ -170,35 +192,21 @@ async def handle_message_update(message: discord.Message):
 
     async with AsyncSessionLocal() as db:
         try:
+            # Prepare all message data
+            msg_data = await prepare_message_data(message, db)
+
             updates = {
                 "content": message.content,
                 "edited_timestamp": getattr(message, "edited_at", datetime.utcnow()),
+                "attachments": msg_data["attachments_list"],
+                "embeds": msg_data["embeds_list"],
+                "reactions": msg_data["emojis_list"],
             }
 
-            # --- Update attachments ---
-            attachments_list = await extract_attachments(message)
-            updates["attachments"] = attachments_list
-
-            # --- Update embeds ---
-            embeds_list = [embed.to_dict() for embed in message.embeds]
-            updates["embeds"] = embeds_list
-
-            # --- Update reactions ---
-            emojis_list = []
-            for reaction in message.reactions:
-                users = [u.id async for u in reaction.users()]
-                emojis_list.append(reaction_dict(reaction.emoji, users))
-            updates["reactions"] = emojis_list
-
-            # --- Update message_reference and referenced_message ---
-            message_reference_data = getattr(message, "reference", None)
-            message_reference, referenced_message = await build_referenced_message(
-                message_reference_data, message
-            )
-            if message_reference:
-                updates["message_reference"] = message_reference
-            if referenced_message:
-                updates["referenced_message"] = referenced_message
+            if msg_data["message_reference"]:
+                updates["message_reference"] = msg_data["message_reference"]
+            if msg_data["referenced_message"]:
+                updates["referenced_message"] = msg_data["referenced_message"]
 
             # Save updates
             await update_message(
@@ -440,9 +448,12 @@ async def fetch_discord_history(channel, message_id=None, backfill=False):
 
 async def reconcile_channel(channel: discord.TextChannel, backfill: bool):
     try:
+        start_time = time.time()
         latest_message_id = await get_latest_message_in_channel(channel.id)
         
         async with AsyncSessionLocal() as db:
+            batch_size = 100
+            
             while True:
                 messages = await fetch_discord_history(channel, latest_message_id, backfill=backfill)
 
@@ -450,21 +461,91 @@ async def reconcile_channel(channel: discord.TextChannel, backfill: bool):
                     break
 
                 print(f"Fetched {len(messages)} messages from Discord")
-                for msg in messages:                    
-                    existing_msg = await get_message(db, msg.id)
+                
+                # Get all message IDs for batch lookup
+                message_ids = [msg.id for msg in messages]
+                existing_messages = await get_messages_batch(db, message_ids)
+                
+                # Separate into new messages and messages to update
+                new_messages = []
+                updates_list = []
+                
+                for msg in messages:
+                    existing_msg = existing_messages.get(msg.id)
                     
                     if existing_msg:
+                        # Check if message was edited
                         if msg.edited_at != existing_msg.edited_timestamp:
-                            await handle_message_update(msg)
+                            # Prepare message data
+                            msg_data = await prepare_message_data(msg, db)
+                            
+                            updates = {
+                                "content": msg.content,
+                                "edited_timestamp": getattr(msg, "edited_at", datetime.utcnow()),
+                                "attachments": msg_data["attachments_list"],
+                                "embeds": msg_data["embeds_list"],
+                                "reactions": msg_data["emojis_list"],
+                            }
+                            
+                            if msg_data["message_reference"]:
+                                updates["message_reference"] = msg_data["message_reference"]
+                            if msg_data["referenced_message"]:
+                                updates["referenced_message"] = msg_data["referenced_message"]
+                            
+                            updates_list.append((existing_msg, updates))
                             print(f"Updated message in DB: {msg.id}")
                     else:
-                        await handle_message_save(msg)
-                        print(f"Saved message in DB: {msg.id}")
+                        # Prepare message data
+                        msg_data = await prepare_message_data(msg, db)
+                        
+                        # Build new message model
+                        message_model = Message(
+                            id=int(msg.id),
+                            channel_id=int(msg.channel.id),
+                            author_id=msg_data["saved_user"].id,
+                            content=msg.content,
+                            attachments=msg_data["attachments_list"],
+                            embeds=msg_data["embeds_list"],
+                            reactions=msg_data["emojis_list"],
+                            type=msg_data["message_type"],
+                            timestamp=getattr(msg, "created_at", datetime.utcnow()),
+                            message_reference=msg_data["message_reference"],
+                            referenced_message=msg_data["referenced_message"]
+                        )
+                        new_messages.append(message_model)
+                
+                # Batch insert new messages
+                if new_messages:
+                    await batch_create_messages(db, new_messages)
+                    print(f"Batch inserted {len(new_messages)} new messages")
+                
+                # Batch update existing messages
+                if updates_list:
+                    await batch_update_messages(db, updates_list)
+                    print(f"Batch updated {len(updates_list)} messages")
                 
                 latest_message_id = messages[-1].id
                 print('going to sleep')
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.05)
 
-            print('channel reconciled successfully.')
+            
+            print(f'channel reconciled successfully. Time taken: {format_elapsed_time(start_time)}')
     except Exception as e:
         print(f"Error reconciling channel {channel.id}: {e}")
+
+
+async def bulk_messages_create(messages_data: list[Message]):
+    async with AsyncSessionLocal() as db:
+        try:
+            batch_size = 100
+            total_inserted = 0
+            
+            for i in range(0, len(messages_data), batch_size):
+                batch = messages_data[i:i + batch_size]
+                await batch_create_messages(db, batch)
+                total_inserted += len(batch)
+                print(f"Inserted {total_inserted}/{len(messages_data)} messages")
+            
+            print(f"Bulk creation completed. Total messages inserted: {total_inserted}")
+        except Exception as e:
+            print(f"Error in bulk message creation: {e}")
