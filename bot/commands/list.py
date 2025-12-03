@@ -5,7 +5,6 @@ from datetime import datetime
 from bot.utils.db_handler import filter_command
 import io
 
-
 class InputModal(Modal):
     def __init__(self, title: str, label: str, callback):
         super().__init__(title=title)
@@ -85,8 +84,8 @@ class FiltersView(View):
         self.add_item(member_select)
 
         button_configs = [
-            ("Set From Date","Enter from date [YYYY-MM-DD]", "from_date"),
-            ("Set To Date","Enter to date [YYYY-MM-DD]", "to_date"),
+            ("Set From Date","Enter from date [YYYY-MM-DD HH:MM:SS]", "from_date"),
+            ("Set To Date","Enter to date [YYYY-MM-DD HH:MM:SS]", "to_date"),
             ("Set Reaction(s)","Enter reaction(s) separated by commas", "reactions"),
             ("Has Attachments","Has attachments? [True/False]", "has_attachments"),
             ("Attachment Name Contains","Enter attachment name contains", "attachment_name_contains"),
@@ -133,7 +132,7 @@ class FiltersView(View):
                 self.filters[key] = datetime.fromisoformat(value)
             except ValueError:
                 await interaction.response.send_message(
-                    f"Invalid date format for {key}. Use YYYY-MM-DD",
+                    f"Invalid date format for {key}. Use YYYY-MM-DD HH:MM:SS",
                     ephemeral=True
                 )
         elif key == "has_attachments":
@@ -166,8 +165,8 @@ class FiltersView(View):
             output_text += f"Channels: {', '.join(self.filters['channels']) if self.filters['channels'] else 'All channels'}\n"
             output_text += f"Members: {', '.join(self.filters['members']) if self.filters['members'] else 'All members'}\n"
             output_text += f"Reactions: {', '.join(self.filters['reactions']) if self.filters['reactions'] else 'All reactions'}\n"
-            output_text += f"From Date: {self.filters['from_date'].strftime('%Y-%m-%d') if self.filters['from_date'] else 'Not set'}\n"
-            output_text += f"To Date: {self.filters['to_date'].strftime('%Y-%m-%d') if self.filters['to_date'] else 'Not set'}\n"
+            output_text += f"From Date: {self.filters['from_date'].strftime('%Y-%m-%d %H:%M:%S') if self.filters['from_date'] else 'Not set'}\n"
+            output_text += f"To Date: {self.filters['to_date'].strftime('%Y-%m-%d %H:%M:%S') if self.filters['to_date'] else 'Not set'}\n"
             output_text += f"Has Attachments: {self.filters['has_attachments']}\n"
             output_text += f"Sort By: {self.filters['sort_by']}\n"
             output_text += f"Total Results: {len(messages)} messages\n"
