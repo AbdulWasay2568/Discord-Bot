@@ -1,4 +1,0 @@
-This is a test file
-this will be read by the bot
-the bot will read all contents of the file
-lets see what it does
