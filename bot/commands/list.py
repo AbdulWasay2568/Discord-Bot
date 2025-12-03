@@ -54,7 +54,7 @@ class FiltersView(View):
             "to_date": None,
             "has_attachments": False,
             "attachment_name_contains": "",
-            "sort_by": "created_descending",
+            "sort_by": "desc",
             "limit":20
         }
 

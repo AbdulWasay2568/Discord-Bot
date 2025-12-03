@@ -367,8 +367,8 @@ async def filter_command(filters: dict):
                     func.cast(Message.attachments, String).ilike(f"%{search_term}%")
                 )
             
-            sort_by = filters.get("sort_by", "created_descending")
-            if sort_by == "created_ascending":
+            sort_by = filters.get("sort_by", "desc")
+            if sort_by == "asc":
                 query = query.order_by(Message.timestamp.asc())
             elif sort_by == "reactions_desc":
                 query = query.order_by(func.json_array_length(Message.reactions).desc())
