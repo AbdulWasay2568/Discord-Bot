@@ -58,15 +58,34 @@ def reaction_dict(emoji, users_list):
     }
 
 
+# async def extract_attachments(message: discord.Message):
+#     attachments_list = []
+#     for attachment in message.attachments:
+#         local_path, success = await download_attachment(
+#             attachment.url,
+#             attachment.filename,
+#             message.id
+#         )
+#         attachments_list.append({
+#             "id": attachment.id,
+#             "filename": attachment.filename,
+#             "url": attachment.url,
+#             "content_type": getattr(attachment, "content_type", None),
+#             "size": getattr(attachment, "size", None),
+#             "local_path": local_path if success else None,
+#             "is_downloaded": success,
+#         })
+#     return attachments_list
+
+
 async def extract_attachments(message: discord.Message):
-    attachments_list = []
-    for attachment in message.attachments:
+    async def download_attachments(attachment):
         local_path, success = await download_attachment(
             attachment.url,
             attachment.filename,
             message.id
         )
-        attachments_list.append({
+        return {
             "id": attachment.id,
             "filename": attachment.filename,
             "url": attachment.url,
@@ -74,9 +93,10 @@ async def extract_attachments(message: discord.Message):
             "size": getattr(attachment, "size", None),
             "local_path": local_path if success else None,
             "is_downloaded": success,
-        })
+        }
+    
+    attachments_list = await asyncio.gather(*[download_attachments(att) for att in message.attachments])
     return attachments_list
-
 
 async def build_referenced_message(message_reference_data, message: discord.Message):
     if not message_reference_data:
@@ -123,6 +143,9 @@ async def build_referenced_message(message_reference_data, message: discord.Mess
     
     return message_reference, referenced_message
 
+async def fetch_reaction_data(reaction):
+        users = [u.id async for u in reaction.users()]
+        return reaction_dict(reaction.emoji, users)
 
 async def prepare_message_data(message: discord.Message, db):
     # 1) Upsert user
@@ -135,10 +158,7 @@ async def prepare_message_data(message: discord.Message, db):
     embeds_list = [embed.to_dict() for embed in message.embeds]
 
     # 4) Save reactions
-    emojis_list = []
-    for reaction in message.reactions:
-        users = [u.id async for u in reaction.users()]
-        emojis_list.append(reaction_dict(reaction.emoji, users))
+    emojis_list = await asyncio.gather(*[fetch_reaction_data(reaction) for reaction in message.reactions])
 
     # 5) Detect message type
     raw_type = getattr(message, "type", None)
@@ -420,8 +440,10 @@ async def get_latest_message_in_channel(channel_id: int) -> Message| None:
                 .limit(1)
             )
             message = result.scalar_one_or_none()
-            print('Latest message ID fetched from DB:', message.id)
-            return message.id
+            if message:
+                print('Latest message ID fetched from DB:', message.id)
+                return message.id
+            return None
         except Exception as e:
             print(f"Error fetching latest message in channel {channel_id}: {e}")
             return None

@@ -65,6 +65,11 @@ async def on_reaction_remove(reaction: discord.Reaction, user: discord.User):
 
 @bot.event
 async def on_ready():
+    try:
+        synced = await bot.tree.sync()
+        print(f"✅ Synced {len(synced)} commands")
+    except Exception as e:
+        print(f"❌ Failed to sync commands: {e}")
     print(f"✅ Bot is online as {bot.user}")
     print("✅ Database initialized successfully")
 
